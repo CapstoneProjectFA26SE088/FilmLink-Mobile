@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "auth",
+      "title": "Auth & Email OTP",
+      "route": "/(auth)/login",
+      "routeFile": "src/app/(auth)/login.tsx",
+      "entry": "src/features/auth/ui/LoginScreen.tsx",
+      "testIDs": [
+        "auth.login.screen",
+        "auth.login.email",
+        "auth.login.password",
+        "auth.login.submit",
+        "auth.login.forgot-password",
+        "auth.login.to-register",
+        "auth.login.unverified-prompt",
+        "auth.login.lock-countdown",
+        "auth.register.screen",
+        "auth.register.name",
+        "auth.register.email",
+        "auth.register.phone",
+        "auth.register.password",
+        "auth.register.terms",
+        "auth.register.submit",
+        "auth.register.back",
+        "auth.otp.screen",
+        "auth.otp.code",
+        "auth.otp.notice",
+        "auth.otp.verify",
+        "auth.otp.resend",
+        "auth.forgot.screen",
+        "auth.forgot.email",
+        "auth.forgot.submit",
+        "auth.forgot.back",
+        "auth.reset.screen",
+        "auth.reset.password",
+        "auth.reset.confirm",
+        "auth.reset.submit"
+      ],
+      "invariants": [
+        "UC06: Registration enforces 2-100 char name, valid email, alphanumeric >= 8 char password, and accepted terms",
+        "UC06: OTP verification enforces 6 digits and caps failed attempts at 5",
+        "BR-01: Newly verified accounts default to PHOTOGRAPHER role"
+      ]
+    },
+    {
+      "id": "home",
+      "title": "Home Dashboard",
+      "route": "/(tabs)",
+      "routeFile": "src/app/(tabs)/index.tsx",
+      "entry": "src/features/home/ui/HomeScreen.tsx",
+      "testIDs": [
+        "home.screen",
+        "home.toggle-role",
+        "home.open-upgrade",
+        "home.open-ai",
+        "home.open-expert",
+        "home.open-orders",
+        "home.open-services"
+      ],
+      "invariants": [
+        "Summarizes active vs completed service orders cleanly",
+        "Quick-book pre-fills bookingDraft and navigates to Services"
+      ]
+    },
+    {
+      "id": "services",
+      "title": "Lab Directory & Booking",
+      "route": "/(tabs)/services",
+      "routeFile": "src/app/(tabs)/services.tsx",
+      "entry": "src/features/services/ui/ServicesScreen.tsx",
+      "testIDs": [
+        "services.screen",
+        "services.search",
+        "services.empty",
+        "services.booking.film-stock",
+        "services.booking.rolls-dec",
+        "services.booking.rolls-inc",
+        "services.booking.stops-dec",
+        "services.booking.stops-inc",
+        "services.booking.note",
+        "services.booking.submit"
+      ],
+      "invariants": [
+        "Filters verified labs by search query, chemical process, and film format",
+        "Clamps roll count to [1, 20] and push/pull stops to [-3, 3]"
+      ]
+    },
+    {
+      "id": "orders",
+      "title": "Orders & Scan Archive",
+      "route": "/(tabs)/orders",
+      "routeFile": "src/app/(tabs)/orders.tsx",
+      "entry": "src/features/orders/ui/OrdersScreen.tsx",
+      "testIDs": ["orders.screen", "orders.empty"],
+      "invariants": [
+        "BR-07: Tracks 6 sequential lab processing stages",
+        "BR-08: Exposes digital scan archive and full-res download on completed orders",
+        "BR-27 & BR-33: Validates non-empty rescan reasons and supports one review per completed order"
+      ]
+    },
+    {
+      "id": "marketplace",
+      "title": "Consignment Marketplace",
+      "route": "/(tabs)/marketplace",
+      "routeFile": "src/app/(tabs)/marketplace.tsx",
+      "entry": "src/features/marketplace/ui/MarketplaceScreen.tsx",
+      "testIDs": [
+        "marketplace.screen",
+        "marketplace.empty",
+        "marketplace.form.title",
+        "marketplace.form.brand",
+        "marketplace.form.price",
+        "marketplace.form.description",
+        "marketplace.form.submit"
+      ],
+      "invariants": [
+        "BR-51: Displays lab-verified Condition Report per consignment item",
+        "BR-52: Restricts price offers to 60%-100% of listed price and max 3 negotiation rounds"
+      ]
+    },
+    {
+      "id": "community",
+      "title": "Community & Knowledge Base",
+      "route": "/(tabs)/community",
+      "routeFile": "src/app/(tabs)/community.tsx",
+      "entry": "src/features/community/ui/CommunityScreen.tsx",
+      "testIDs": [
+        "community.screen",
+        "community.toggle-composer",
+        "community.composer.camera",
+        "community.composer.lens",
+        "community.composer.film",
+        "community.composer.lab",
+        "community.composer.caption",
+        "community.composer.submit"
+      ],
+      "invariants": [
+        "Displays EXIF-tagged photo feed, Q&A forum, and Knowledge Base articles",
+        "Rejects whitespace-only forum replies"
+      ]
+    },
+    {
+      "id": "expert",
+      "title": "Expert Studio & Upgrade",
+      "route": "/(tabs)/expert",
+      "routeFile": "src/app/(tabs)/expert.tsx",
+      "entry": "src/features/expert/ui/ExpertStudioScreen.tsx",
+      "testIDs": [
+        "expert.studio.screen",
+        "expert.studio.locked",
+        "expert.article.toggle",
+        "expert.article.title",
+        "expert.article.summary",
+        "expert.article.content",
+        "expert.article.kb-toggle",
+        "expert.article.publish",
+        "expert.workshop.toggle",
+        "expert.workshop.title",
+        "expert.workshop.date",
+        "expert.workshop.location",
+        "expert.workshop.capacity",
+        "expert.workshop.fee",
+        "expert.workshop.submit",
+        "expert.upgrade.screen",
+        "expert.upgrade.experience",
+        "expert.upgrade.portfolio",
+        "expert.upgrade.submit",
+        "expert.upgrade.quick-demo"
+      ],
+      "invariants": [
+        "BR-05: Locks Expert Studio for non-expert users and inherits Photographer capabilities when upgraded",
+        "BR-36 & UC11: Requires >= 20 characters of experience on expert upgrade submission"
+      ]
+    },
+    {
+      "id": "ai-advisor",
+      "title": "AI Film Advisor",
+      "route": "/(modals)/ai-advisor",
+      "routeFile": "src/app/(modals)/ai-advisor.tsx",
+      "entry": "src/features/ai-advisor/ui/AiAdvisorScreen.tsx",
+      "testIDs": [
+        "ai.screen",
+        "ai.chat.input",
+        "ai.chat.send",
+        "ai.chat.open-services",
+        "ai.diag.frame",
+        "ai.diag.run"
+      ],
+      "invariants": [
+        "Provides advisory chat responses grounded in FilmLink Knowledge Base",
+        "Generates frame scan quality diagnostics"
+      ]
+    },
+    {
+      "id": "profile",
+      "title": "Profile & Theme Settings",
+      "route": "/profile",
+      "routeFile": "src/app/profile.tsx",
+      "entry": "src/features/profile/ui/ProfileScreen.tsx",
+      "testIDs": [
+        "profile.screen",
+        "profile.role-toggle",
+        "profile.open-upgrade",
+        "profile.name",
+        "profile.phone",
+        "profile.bio",
+        "profile.save",
+        "profile.logout",
+        "profile.password.old",
+        "profile.password.new",
+        "profile.password.confirm",
+        "profile.password.submit",
+        "profile.password.error",
+        "profile.password.success"
+      ],
+      "invariants": [
+        "Supports Light, Dark, and System color mode switching across the entire app",
+        "UC06: Enforces 2-100 char full name validation on profile save"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "expo-foundation",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:scripts": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"scripts/**/*.test.ts\"",
+    "check:arch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify/architecture.ts",
+    "check:features": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify/feature-map.ts",
+    "check:deps": "expo install --check",
+    "doctor": "pnpm dlx expo-doctor@latest",
+    "export:web": "expo export --platform web --output-dir dist",
+    "gen:feature": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-feature.ts",
+    "verify": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify/run.ts",
+    "verify:full": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify/run.ts --full"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.107.1",
+    "expo": "~58.0.26",
+    "expo-constants": "~58.0.16",
+    "expo-file-system": "~58.0.14",
+    "expo-linking": "~58.0.17",
+    "expo-router": "~58.0.32",
+    "expo-secure-store": "~58.0.3",
+    "expo-status-bar": "~58.0.5",
+    "nativewind": "^4.2.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-web": "^0.21.4",
+    "react-native-worklets": "0.13.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "30.0.0",
+    "@types/node": "^24.19.2",
+    "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.26",
+    "fast-check": "4.10.2",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.15",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.3"
+  }
+}

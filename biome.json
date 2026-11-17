@@ -1,0 +1,111 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": [
+      "src/**",
+      "scripts/**",
+      "test/**",
+      "*.json",
+      "*.js",
+      "*.ts",
+      "!expo-env.d.ts",
+      "!node_modules",
+      "!.expo",
+      "!dist",
+      "!coverage",
+      "!reports"
+    ]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": "error",
+        "noUnknownAtRules": {
+          "level": "error",
+          "options": {
+            "ignore": ["tailwind"]
+          }
+        }
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        }
+      },
+      "nursery": {
+        "noFloatingPromises": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/features/**", "src/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": {
+                    "importNames": ["useEffect", "useLayoutEffect"],
+                    "message": "useEffect is banned in features and routes. Derive state in render, handle events in handlers, use TanStack Query for server state, or encapsulate platform subscriptions in src/shared/hooks/."
+                  },
+                  "react-native": {
+                    "importNames": [
+                      "Text",
+                      "Pressable",
+                      "TouchableOpacity",
+                      "Button",
+                      "TextInput",
+                      "StyleSheet"
+                    ],
+                    "message": "Raw React Native UI primitives and StyleSheet are banned in features and routes. Import UI primitives from @/shared/ui and style with semantic NativeWind tokens."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
+}
