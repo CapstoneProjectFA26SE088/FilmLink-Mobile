@@ -10,7 +10,7 @@ import {
   switchUserRole,
 } from '@/shared/domain';
 import { formatVnd, useStore } from '@/shared/lib';
-import { AppHeader, Badge, Button, Card, HStack, Screen, Text, VStack } from '@/shared/ui';
+import { Badge, Button, Card, HStack, Icon, Screen, Text, VStack } from '@/shared/ui';
 import { extractFirstName, summarizeDashboardOrders } from '../model/home';
 
 export function HomeScreen() {
@@ -38,29 +38,44 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen
-      testID="home.screen"
-      scroll
-      edges="top"
-      header={
-        <AppHeader
-          title={`Chào ${firstName}`}
-          subtitle="Không gian nhiếp ảnh phim FilmLink"
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="home.screen" scroll edges="top">
       <VStack gap="md">
+        <HStack justify="between" align="center" className="pt-2">
+          <VStack gap="none">
+            <Text variant="title">Chào {firstName}</Text>
+            <Text variant="caption" tone="muted">
+              Không gian nhiếp ảnh phim FilmLink
+            </Text>
+          </VStack>
+          <Badge
+            label={isExpert ? 'Chuyên gia' : 'Nhiếp ảnh gia'}
+            tone={isExpert ? 'brand' : 'neutral'}
+            icon={
+              <Icon
+                name={isExpert ? 'sparkles' : 'camera-outline'}
+                size="xs"
+                tone={isExpert ? 'brand' : 'secondary'}
+              />
+            }
+          />
+        </HStack>
         <Card tone={isExpert ? 'brand' : 'muted'}>
           <VStack gap="sm">
             <HStack justify="between" align="center">
               <Badge
-                label={isExpert ? 'PHOTOGRAPHY EXPERT (BR-05)' : 'PHOTOGRAPHER (BR-01)'}
+                label={isExpert ? 'Chuyên gia Nhiếp ảnh' : 'Nhiếp ảnh gia'}
                 tone={isExpert ? 'brand' : 'neutral'}
+                icon={
+                  <Icon
+                    name={isExpert ? 'sparkles' : 'camera-outline'}
+                    size="xs"
+                    tone={isExpert ? 'brand' : 'secondary'}
+                  />
+                }
               />
               <Button
                 testID="home.toggle-role"
-                label={isExpert ? 'Về Photographer' : 'Thử Expert'}
+                label={isExpert ? 'Về Nhiếp ảnh gia' : 'Trải nghiệm Chuyên gia'}
                 variant="outline"
                 size="sm"
                 onPress={handleToggleRole}
@@ -68,13 +83,13 @@ export function HomeScreen() {
             </HStack>
             <Text variant="heading">
               {isExpert
-                ? 'Đã mở khóa Expert Studio, Knowledge Base & Workshop'
+                ? 'Đã mở khóa Expert Studio, Thư viện kiến thức & Tổ chức Workshop'
                 : 'Nâng cấp Chuyên gia để xuất bản cẩm nang & tổ chức Workshop'}
             </Text>
             {!isExpert ? (
               <Button
                 testID="home.open-upgrade"
-                label="Nộp hồ sơ Chuyên gia (UC11)"
+                label="Nộp hồ sơ Chuyên gia"
                 variant="secondary"
                 size="sm"
                 onPress={() => router.push('/(modals)/expert-upgrade')}
@@ -86,9 +101,12 @@ export function HomeScreen() {
         <HStack gap="sm">
           <Card className="flex-1">
             <VStack gap="xs">
-              <Text variant="caption" tone="muted">
-                Đơn đang xử lý
-              </Text>
+              <HStack justify="between" align="center">
+                <Text variant="caption" tone="muted">
+                  Đơn đang xử lý
+                </Text>
+                <Icon name="time-outline" size="xs" tone="brand" />
+              </HStack>
               <Text variant="title" tone="brand">
                 {activeOrdersCount}
               </Text>
@@ -96,9 +114,12 @@ export function HomeScreen() {
           </Card>
           <Card className="flex-1">
             <VStack gap="xs">
-              <Text variant="caption" tone="muted">
-                Lưu trữ số (BR-08)
-              </Text>
+              <HStack justify="between" align="center">
+                <Text variant="caption" tone="muted">
+                  Lưu trữ số trọn đời
+                </Text>
+                <Icon name="cloud-done-outline" size="xs" tone="success" />
+              </HStack>
               <Text variant="title" tone="success">
                 {completedOrdersCount}
               </Text>
@@ -109,10 +130,11 @@ export function HomeScreen() {
         <HStack gap="sm">
           <Button
             testID="home.open-ai"
-            label={`Trợ lý AI (${articles.length} KB)`}
+            label={`Trợ lý AI (${articles.length} Cẩm nang)`}
             variant="secondary"
             size="sm"
             className="flex-1"
+            icon={<Icon name="sparkles" size="xs" tone="brand" />}
             onPress={() => router.push('/(modals)/ai-advisor')}
           />
           <Button
@@ -121,17 +143,21 @@ export function HomeScreen() {
             variant="outline"
             size="sm"
             className="flex-1"
+            icon={<Icon name="calendar-outline" size="xs" tone="default" />}
             onPress={() => router.push('/(tabs)/expert')}
           />
         </HStack>
 
         {primaryActiveOrder ? (
           <Card tone="elevated">
-            <VStack gap="xs">
+            <VStack gap="sm">
               <HStack justify="between" align="center">
-                <Text variant="secondary" tone="brand">
-                  Đơn đang xử lý: {primaryActiveOrder.id}
-                </Text>
+                <HStack gap="xs" align="center">
+                  <Icon name="sync-outline" size="sm" tone="brand" />
+                  <Text variant="secondary" tone="brand">
+                    Đơn đang xử lý: {primaryActiveOrder.id}
+                  </Text>
+                </HStack>
                 <Badge label={`${primaryActiveOrder.progress}%`} tone="info" />
               </HStack>
               <Text variant="heading">{primaryActiveOrder.filmStock}</Text>
@@ -149,7 +175,7 @@ export function HomeScreen() {
           </Card>
         ) : null}
 
-        <HStack justify="between" align="center">
+        <HStack justify="between" align="center" className="pt-1">
           <Text variant="section">Phòng Lab xác minh ({labs.length})</Text>
           <Button
             testID="home.open-services"
@@ -166,13 +192,16 @@ export function HomeScreen() {
             <Card key={lab.id}>
               <VStack gap="xs">
                 <HStack justify="between" align="center">
-                  <Text variant="heading">{lab.name}</Text>
+                  <HStack gap="xs" align="center">
+                    <Text variant="heading">{lab.name}</Text>
+                    <Icon name="checkmark-circle" size="xs" tone="brand" />
+                  </HStack>
                   <Badge label={`★ ${lab.rating}`} tone="success" />
                 </HStack>
                 <Text variant="caption" tone="secondary">
                   {lab.city} · {lab.turnaroundSummary}
                 </Text>
-                <HStack justify="between" align="center">
+                <HStack justify="between" align="center" className="pt-2">
                   <Text variant="secondary" tone="brand">
                     Từ {formatVnd(basePrice)}
                   </Text>

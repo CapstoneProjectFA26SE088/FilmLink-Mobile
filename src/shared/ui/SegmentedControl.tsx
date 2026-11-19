@@ -27,7 +27,7 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View
-      className={cn('flex-row rounded-lg border p-1', className)}
+      className={cn('flex-row rounded-2xl border p-1', className)}
       style={{ backgroundColor: palette.surfaceMuted, borderColor: palette.border }}
     >
       {options.map((opt) => {
@@ -40,11 +40,12 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(opt.value)}
-            className="flex-1 items-center justify-center rounded px-2 py-2"
+            hitSlop={6}
+            className="flex-1 items-center justify-center rounded-xl min-h-10 px-2 py-1.5 active:opacity-80"
             style={{ backgroundColor: active ? palette.surface : 'transparent' }}
           >
             <NativeText
-              className="text-xs font-semibold"
+              className="text-xs font-bold"
               numberOfLines={1}
               style={{ color: active ? palette.brand : palette.textSecondary }}
             >

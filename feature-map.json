@@ -74,6 +74,7 @@
         "services.screen",
         "services.search",
         "services.empty",
+        "services.booking.draft-recovery",
         "services.booking.film-stock",
         "services.booking.rolls-dec",
         "services.booking.rolls-inc",
@@ -167,7 +168,8 @@
         "expert.upgrade.experience",
         "expert.upgrade.portfolio",
         "expert.upgrade.submit",
-        "expert.upgrade.quick-demo"
+        "expert.upgrade.quick-demo",
+        "expert.upgrade.back"
       ],
       "invariants": [
         "BR-05: Locks Expert Studio for non-expert users and inherits Photographer capabilities when upgraded",
@@ -186,7 +188,8 @@
         "ai.chat.send",
         "ai.chat.open-services",
         "ai.diag.frame",
-        "ai.diag.run"
+        "ai.diag.run",
+        "ai.back"
       ],
       "invariants": [
         "Provides advisory chat responses grounded in FilmLink Knowledge Base",
@@ -196,8 +199,8 @@
     {
       "id": "profile",
       "title": "Profile & Theme Settings",
-      "route": "/profile",
-      "routeFile": "src/app/profile.tsx",
+      "route": "/(tabs)/profile",
+      "routeFile": "src/app/(tabs)/profile.tsx",
       "entry": "src/features/profile/ui/ProfileScreen.tsx",
       "testIDs": [
         "profile.screen",

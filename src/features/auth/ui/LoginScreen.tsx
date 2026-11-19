@@ -77,20 +77,20 @@ export function LoginScreen() {
   };
 
   return (
-    <Screen testID="auth.login.screen" scroll>
-      <VStack gap="lg">
-        <VStack gap="xs">
-          <Badge label="FILMLINK ANALOG PLATFORM" tone="brand" />
-          <Text variant="title" accessibilityRole="header">
+    <Screen testID="auth.login.screen" scroll centerContent>
+      <VStack gap="md" className="w-full max-w-sm self-center">
+        <VStack gap="xs" align="center">
+          <Badge label="FILMLINK ANALOG" tone="brand" />
+          <Text variant="title" accessibilityRole="header" className="text-center">
             Đăng nhập tài khoản
           </Text>
-          <Text variant="secondary" tone="secondary">
-            Kết nối cộng đồng chụp phim, đặt dịch vụ tráng scan và chia sẻ kiến thức chuyên gia.
+          <Text variant="secondary" tone="muted" className="text-center">
+            Kết nối cộng đồng chụp phim, tráng scan và chuyên gia
           </Text>
         </VStack>
 
-        <Card>
-          <VStack gap="md">
+        <Card className="w-full">
+          <VStack gap="sm">
             <Input
               testID="auth.login.email"
               label="Email"
@@ -116,6 +116,15 @@ export function LoginScreen() {
               autoCapitalize="none"
               placeholder="Tối thiểu 8 ký tự"
             />
+            <HStack justify="end">
+              <Button
+                testID="auth.login.forgot-password"
+                label="Quên mật khẩu?"
+                variant="ghost"
+                size="sm"
+                onPress={() => router.push('/(auth)/forgot-password')}
+              />
+            </HStack>
             {error ? (
               <Text variant="caption" tone="danger">
                 {error}
@@ -147,25 +156,16 @@ export function LoginScreen() {
               disabled={loading || lockSeconds > 0}
               onPress={() => void handleLiveLogin()}
             />
-            <HStack justify="end">
-              <Button
-                testID="auth.login.forgot-password"
-                label="Quên mật khẩu?"
-                variant="ghost"
-                size="sm"
-                onPress={() => router.push('/(auth)/forgot-password')}
-              />
-            </HStack>
           </VStack>
         </Card>
 
-        <HStack gap="sm" align="center" justify="center">
-          <Text variant="secondary" tone="secondary">
+        <HStack gap="xs" align="center" justify="center">
+          <Text variant="secondary" tone="muted">
             Chưa có tài khoản?
           </Text>
           <Button
             testID="auth.login.to-register"
-            label="Đăng ký ngay (UC06)"
+            label="Đăng ký tài khoản mới"
             variant="ghost"
             size="sm"
             onPress={() => router.push('/(auth)/register')}

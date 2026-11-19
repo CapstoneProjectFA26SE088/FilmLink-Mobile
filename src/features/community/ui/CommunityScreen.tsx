@@ -1,13 +1,7 @@
 import { useState } from 'react';
-import {
-  authStore,
-  checkRoleCapabilities,
-  createPhotoPost,
-  filmLinkStore,
-  Role,
-} from '@/shared/domain';
+import { authStore, createPhotoPost, filmLinkStore, Role } from '@/shared/domain';
 import { useStore } from '@/shared/lib';
-import { AppHeader, Button, Card, Input, Screen, SegmentedControl, VStack } from '@/shared/ui';
+import { Button, Card, Input, Screen, SegmentedControl, Text, VStack } from '@/shared/ui';
 import type { CommunitySection } from '../model/community';
 import {
   ExpertArticleCardSection,
@@ -93,25 +87,19 @@ export function CommunityScreen() {
   const articles = useStore(filmLinkStore, (state) => state.articles);
   const user = useStore(authStore, (state) => state.user);
   const role = user?.role ?? Role.PHOTOGRAPHER;
-  const { isExpert } = checkRoleCapabilities(role);
 
   const [section, setSection] = useState<CommunitySection>('feed');
   const [showComposer, setShowComposer] = useState(false);
 
   return (
-    <Screen
-      testID="community.screen"
-      scroll
-      edges="top"
-      header={
-        <AppHeader
-          title="Cộng đồng & Cẩm nang"
-          subtitle="Photo Feed EXIF, Hỏi đáp Q&A & Cẩm nang Chuyên gia"
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="community.screen" scroll edges="top">
       <VStack gap="md">
+        <VStack gap="none" className="pt-2">
+          <Text variant="title">Cộng đồng & Cẩm nang</Text>
+          <Text variant="caption" tone="muted">
+            Photo Feed EXIF, Hỏi đáp Q&A & Cẩm nang Chuyên gia
+          </Text>
+        </VStack>
         <SegmentedControl
           testIDPrefix="community.section"
           options={[

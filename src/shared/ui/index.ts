@@ -1,3 +1,4 @@
+export { AiTabButton, type AiTabButtonProps } from './AiTabButton';
 export { AppHeader, type AppHeaderProps } from './AppHeader';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
@@ -9,8 +10,16 @@ export {
   type FilterChipGroupProps,
   type FilterChipOption,
 } from './FilterChipGroup';
+export {
+  Icon,
+  type IconName,
+  type IconProps,
+  type IconSize,
+  type IconTone,
+} from './Icon';
 export { Input, type InputProps } from './Input';
 export { MediaImage, type MediaImageProps } from './MediaImage';
+export { aiTabScreenOptions, tabScreenOptions, useTabScreenTheme } from './navigation';
 export { Screen, type ScreenProps } from './Screen';
 export {
   SegmentedControl,

@@ -4,13 +4,13 @@ import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
 const variantClass = {
-  title: 'text-2xl font-bold',
-  section: 'text-xl font-semibold',
+  title: 'text-2xl font-bold tracking-tight',
+  section: 'text-xl font-bold tracking-tight',
   heading: 'text-lg font-semibold',
-  body: 'text-base',
+  body: 'text-base leading-relaxed',
   secondary: 'text-sm font-medium',
-  caption: 'text-xs',
-  display: 'text-5xl font-bold',
+  caption: 'text-xs font-semibold tracking-wide',
+  display: 'text-4xl font-extrabold tracking-tight',
 } as const;
 
 export type TextVariant = keyof typeof variantClass;

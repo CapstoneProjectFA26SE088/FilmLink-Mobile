@@ -22,7 +22,7 @@ export function ConsignmentFormSection({ onSuccess }: { readonly onSuccess: () =
   const handleSubmit = () => {
     const check = validateConsignmentListingInput({ title, priceText });
     if (!check.valid) {
-      setError(check.error);
+      setError(check.error ?? 'Dữ liệu không hợp lệ.');
       return;
     }
     setError(null);
@@ -30,7 +30,7 @@ export function ConsignmentFormSection({ onSuccess }: { readonly onSuccess: () =
       title,
       category,
       brand,
-      priceVnd: check.numericPrice,
+      priceVnd: check.numericPrice ?? 0,
       holdingLabName,
       description,
     });
@@ -40,7 +40,7 @@ export function ConsignmentFormSection({ onSuccess }: { readonly onSuccess: () =
   return (
     <Card>
       <VStack gap="md">
-        <Text variant="heading">Đăng ký ký gửi thiết bị tại Lab (BR-51)</Text>
+        <Text variant="heading">Đăng ký ký gửi thiết bị tại Lab</Text>
         <Input
           testID="marketplace.form.title"
           label="Tên thiết bị"

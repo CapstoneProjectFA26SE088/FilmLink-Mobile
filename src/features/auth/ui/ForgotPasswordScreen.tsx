@@ -32,20 +32,20 @@ export function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen testID="auth.forgot.screen" scroll>
-      <VStack gap="lg">
-        <VStack gap="xs">
+    <Screen testID="auth.forgot.screen" scroll centerContent>
+      <VStack gap="md" className="w-full max-w-sm self-center">
+        <VStack gap="xs" align="center">
           <Badge label="KHÔI PHỤC TÀI KHOẢN" tone="brand" />
-          <Text variant="title" accessibilityRole="header">
+          <Text variant="title" accessibilityRole="header" className="text-center">
             Quên mật khẩu
           </Text>
-          <Text variant="secondary" tone="secondary">
-            Nhập email đã đăng ký. FilmLink sẽ gửi mã OTP xác thực để bạn đặt lại mật khẩu mới.
+          <Text variant="secondary" tone="muted" className="text-center">
+            Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu
           </Text>
         </VStack>
 
-        <Card>
-          <VStack gap="md">
+        <Card className="w-full">
+          <VStack gap="sm">
             <Input
               testID="auth.forgot.email"
               label="Email đã đăng ký"

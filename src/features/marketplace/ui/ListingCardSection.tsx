@@ -23,11 +23,11 @@ export function ListingCardSection({ item }: { readonly item: ConsignmentListing
   const handleSendOffer = () => {
     const check = validateConsignmentOfferPrice(offerPriceText, item.priceVnd);
     if (!check.valid) {
-      setOfferError(check.error);
+      setOfferError(check.error ?? 'Giá đề xuất không hợp lệ.');
       return;
     }
     try {
-      submitConsignmentPriceOffer(item.id, check.numericPrice, offerNote);
+      submitConsignmentPriceOffer(item.id, check.numericPrice ?? 0, offerNote);
       setOfferError(null);
     } catch (err) {
       setOfferError(err instanceof Error ? err.message : 'Không thể gửi đề xuất giá.');
@@ -55,7 +55,7 @@ export function ListingCardSection({ item }: { readonly item: ConsignmentListing
         <HStack gap="xs">
           <Button
             testID={`marketplace.report-btn.${item.id}`}
-            label={showReport ? 'Ẩn kiểm định' : 'Kiểm định (BR-51)'}
+            label={showReport ? 'Ẩn kiểm định' : 'Xem kiểm định'}
             size="sm"
             variant="outline"
             className="flex-1"
@@ -90,7 +90,7 @@ export function ListingCardSection({ item }: { readonly item: ConsignmentListing
         {showOfferBox ? (
           <Card tone="muted">
             <VStack gap="sm">
-              <Text variant="secondary">Thương lượng giá (BR-52) · Còn {roundsRemaining} vòng</Text>
+              <Text variant="secondary">Thương lượng giá · Còn {roundsRemaining} vòng</Text>
               {item.offers.map((off) => (
                 <HStack key={off.id} justify="between">
                   <Text variant="caption">
@@ -125,7 +125,7 @@ export function ListingCardSection({ item }: { readonly item: ConsignmentListing
                 </>
               ) : (
                 <Text variant="caption" tone="warning">
-                  Đã sử dụng hết {MAX_OFFER_ROUNDS} vòng trả giá (BR-52).
+                  Đã sử dụng hết {MAX_OFFER_ROUNDS} vòng thương lượng giá.
                 </Text>
               )}
             </VStack>

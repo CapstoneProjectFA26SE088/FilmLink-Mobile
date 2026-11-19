@@ -3,19 +3,17 @@ import { useState } from 'react';
 import {
   approveExpertApplicationDemo,
   authStore,
-  checkRoleCapabilities,
   EXPERT_SPECIALIZATIONS,
-  Role,
   submitExpertApplication,
   validateExpertApplicationExperience,
 } from '@/shared/domain';
 import { useStore } from '@/shared/lib';
 import {
-  AppHeader,
   Badge,
   Button,
   Card,
   FilterChipGroup,
+  HStack,
   Input,
   Screen,
   Text,
@@ -25,7 +23,6 @@ import {
 export function ExpertUpgradeScreen() {
   const user = useStore(authStore, (state) => state.user);
   const application = useStore(authStore, (state) => state.expertApplication);
-  const { isExpert } = checkRoleCapabilities(user?.role ?? Role.PHOTOGRAPHER);
 
   const [specialization, setSpecialization] = useState(
     EXPERT_SPECIALIZATIONS[0]?.value ?? 'Buồng tối Đen Trắng (B&W)',
@@ -60,22 +57,26 @@ export function ExpertUpgradeScreen() {
   };
 
   return (
-    <Screen
-      testID="expert.upgrade.screen"
-      scroll
-      header={
-        <AppHeader
-          title="Nâng cấp Chuyên gia (UC11)"
-          subtitle="Thẩm định hồ sơ Photography Expert (BR-36)"
-          showBack
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="expert.upgrade.screen" scroll edges="top">
       <VStack gap="md">
+        <HStack justify="between" align="center" className="pt-2">
+          <VStack gap="none" className="flex-1">
+            <Text variant="title">Nâng cấp Chuyên gia</Text>
+            <Text variant="caption" tone="muted">
+              Thẩm định hồ sơ Chuyên gia Nhiếp ảnh
+            </Text>
+          </VStack>
+          <Button
+            testID="expert.upgrade.back"
+            label="Quay lại"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.back()}
+          />
+        </HStack>
         <Card tone="brand">
           <VStack gap="xs">
-            <Badge label="PHOTOGRAPHY_EXPERT ⊃ PHOTOGRAPHER (BR-05)" tone="brand" />
+            <Badge label="ĐẶC QUYỀN CHUYÊN GIA" tone="brand" />
             <Text variant="heading">Đặc quyền Kế thừa Vai trò</Text>
             <Text variant="secondary" tone="secondary">
               Khi nâng cấp lên Chuyên gia, bạn giữ nguyên 100% tính năng Photographer và mở khóa tab

@@ -1,48 +1,27 @@
 import { useState } from 'react';
-import {
-  authStore,
-  CATEGORY_OPTIONS,
-  checkRoleCapabilities,
-  filmLinkStore,
-  Role,
-} from '@/shared/domain';
+import { CATEGORY_OPTIONS, filmLinkStore } from '@/shared/domain';
 import { useStore } from '@/shared/lib';
-import {
-  AppHeader,
-  EmptyState,
-  FilterChipGroup,
-  Screen,
-  SegmentedControl,
-  VStack,
-} from '@/shared/ui';
+import { EmptyState, FilterChipGroup, Screen, SegmentedControl, Text, VStack } from '@/shared/ui';
 import { filterListingsByCategory } from '../model/marketplace';
 import { ConsignmentFormSection } from './ConsignmentFormSection';
 import { ListingCardSection } from './ListingCardSection';
 
 export function MarketplaceScreen() {
   const listings = useStore(filmLinkStore, (state) => state.listings);
-  const userRole = useStore(authStore, (state) => state.user?.role ?? Role.PHOTOGRAPHER);
-  const { isExpert } = checkRoleCapabilities(userRole);
-
   const [activeTab, setActiveTab] = useState<'catalog' | 'consign'>('catalog');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const visibleListings = filterListingsByCategory(listings, selectedCategory);
 
   return (
-    <Screen
-      testID="marketplace.screen"
-      scroll
-      edges="top"
-      header={
-        <AppHeader
-          title="Chợ ký gửi Thiết bị"
-          subtitle="Kiểm định Lab (BR-51) & Trả giá 3 vòng (BR-52)"
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="marketplace.screen" scroll edges="top">
       <VStack gap="md">
+        <VStack gap="none" className="pt-2">
+          <Text variant="title">Chợ ký gửi Thiết bị</Text>
+          <Text variant="caption" tone="muted">
+            Thiết bị máy ảnh kiểm định Lab & Thương lượng giá
+          </Text>
+        </VStack>
         <SegmentedControl
           testIDPrefix="marketplace.tab"
           options={[

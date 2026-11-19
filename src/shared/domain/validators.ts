@@ -1,4 +1,13 @@
-import { ArticleStatus, HandoverMethod, PaymentMethod, Role, ServiceTier } from './enums';
+import { z } from 'zod';
+import {
+  ArticleStatus,
+  FilmFormat,
+  FilmProcess,
+  HandoverMethod,
+  PaymentMethod,
+  Role,
+  ServiceTier,
+} from './enums';
 
 export const OTP_MAX_ATTEMPTS_DEFAULT = 5;
 export const PUSH_PULL_FEE_PER_STOP_VND = 20_000;
@@ -15,6 +24,40 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 72;
 export const VN_PHONE_REGEX = /^(0|\+84)\d{9,10}$/;
 export const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export type RegistrationValidationInput = {
+  readonly fullName: string;
+  readonly email: string;
+  readonly password: string;
+  readonly phoneNumber?: string | null;
+  readonly acceptedTerms: boolean;
+};
+
+export type FilmRollValidationInput = {
+  readonly filmStockId?: number | null;
+  readonly filmStockNameText?: string | null;
+  readonly filmFormatId: number;
+  readonly exposureCount: number;
+  readonly shootingIso: number;
+  readonly servicePackageId: number;
+  readonly pushPullStops: number;
+};
+
+export type ServiceOrderValidationInput = {
+  readonly filmLabId: number;
+  readonly serviceTier: ServiceTier;
+  readonly filmHandoverMethod: HandoverMethod;
+  readonly paymentMethod: PaymentMethod;
+  readonly specialRequest?: string | null;
+  readonly rolls: readonly FilmRollValidationInput[];
+  readonly customerAddressLine?: string | null;
+  readonly customerDistrict?: string | null;
+  readonly customerProvince?: string | null;
+  readonly customerPhone?: string | null;
+  readonly pickupWindowStartAt?: string | null;
+  readonly pickupWindowEndAt?: string | null;
+};
 
 export function validateLoginCredentials(email: string, password: string): string | null {
   if (
@@ -62,233 +105,213 @@ export function validateChangePasswordInput(
   return null;
 }
 
-export type RegistrationValidationInput = {
-  readonly fullName: string;
-  readonly email: string;
-  readonly password: string;
-  readonly phoneNumber?: string;
-  readonly acceptedTerms: boolean;
-};
-
 export function validateRegistrationForm(input: RegistrationValidationInput): string | null {
-  const trimmedName = input.fullName.trim();
-  if (trimmedName.length < 2 || trimmedName.length > 100) {
-    return 'Họ và tên cần từ 2 đến 100 ký tự (UC06).';
+  const name = input.fullName.trim();
+  if (name.length < 2 || name.length > 100) {
+    return 'Họ và tên phải từ 2 đến 100 ký tự.';
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
-    return 'Vui lòng nhập địa chỉ email hợp lệ.';
+  const email = input.email.trim();
+  if (!EMAIL_REGEX.test(email)) {
+    return 'Email không đúng định dạng.';
   }
   const passwordError = validatePasswordComplexity(input.password);
   if (passwordError) {
     return passwordError;
   }
-  if (input.phoneNumber !== undefined) {
+  if (input.phoneNumber) {
     const phoneError = validatePhoneNumber(input.phoneNumber, false);
     if (phoneError) {
       return phoneError;
     }
   }
   if (!input.acceptedTerms) {
-    return 'Bạn cần đồng ý với điều khoản sử dụng của FilmLink.';
+    return 'Vui lòng đồng ý với điều khoản sử dụng.';
   }
   return null;
 }
 
 export function validateOtpCode(
-  otp: string,
+  code: string,
   attempts: number,
-  maxAttempts: number = OTP_MAX_ATTEMPTS_DEFAULT,
+  maxAttempts = OTP_MAX_ATTEMPTS_DEFAULT,
 ): { readonly valid: boolean; readonly error: string | null; readonly nextAttempts: number } {
   if (attempts >= maxAttempts) {
     return {
       valid: false,
-      error: 'Đã nhập sai quá 5 lần cho phép. Vui lòng yêu cầu gửi lại mã mới.',
+      error: 'Đã vượt quá số lần thử OTP tối đa. Vui lòng yêu cầu mã mới.',
       nextAttempts: attempts,
     };
   }
-
-  if (!/^\d{6}$/.test(otp.trim())) {
-    const nextAttempts = attempts + 1;
-    const remaining = Math.max(0, maxAttempts - nextAttempts);
+  if (!/^\d{6}$/.test(code.trim())) {
     return {
       valid: false,
-      error: `Mã OTP phải gồm đúng 6 chữ số. Số lần thử còn lại: ${remaining}`,
-      nextAttempts,
+      error: 'Mã OTP phải gồm 6 chữ số.',
+      nextAttempts: attempts + 1,
     };
   }
-
-  return { valid: true, error: null, nextAttempts: attempts };
+  return {
+    valid: true,
+    error: null,
+    nextAttempts: attempts,
+  };
 }
 
 export function validateProfileFullName(fullName: string): string | null {
-  const trimmedName = fullName.trim();
-  if (trimmedName.length < 2 || trimmedName.length > 100) {
-    return 'Họ và tên hiển thị cần từ 2 đến 100 ký tự (UC06).';
-  }
-  return null;
-}
-
-export type FilmRollValidationInput = {
-  readonly filmStockId?: number | null;
-  readonly filmStockNameText?: string | null;
-  readonly filmFormatId: number;
-  readonly exposureCount: number;
-  readonly shootingIso?: number | null;
-  readonly servicePackageId: number;
-  readonly pushPullStops?: number | null;
-};
-
-function isIntegerInRange(value: number, min: number, max: number): boolean {
-  return Number.isInteger(value) && value >= min && value <= max;
-}
-
-function validateFilmStockChoice(
-  filmStockId: number | null | undefined,
-  filmStockNameText: string | null | undefined,
-): string | null {
-  const hasStockId =
-    typeof filmStockId === 'number' && Number.isInteger(filmStockId) && filmStockId > 0;
-  const trimmedName = filmStockNameText?.trim() ?? '';
-  const hasStockName = trimmedName.length > 0;
-  if (hasStockId === hasStockName) {
-    return 'Mỗi cuộn phim cần chọn 1 loại phim từ danh mục hoặc nhập tên phim (không đồng thời cả hai).';
-  }
-  if (trimmedName.length > 100) {
-    return 'Tên loại phim nhập tay tối đa 100 ký tự.';
-  }
-  return null;
-}
-
-export function validateFilmRollInput(input: FilmRollValidationInput): string | null {
-  const stockError = validateFilmStockChoice(input.filmStockId, input.filmStockNameText);
-  if (stockError) {
-    return stockError;
-  }
-  if (!Number.isInteger(input.filmFormatId) || input.filmFormatId <= 0) {
-    return 'Vui lòng chọn khổ phim hợp lệ cho cuộn phim.';
-  }
-  if (!Number.isInteger(input.servicePackageId) || input.servicePackageId <= 0) {
-    return 'Vui lòng chọn gói dịch vụ tráng/scan hợp lệ.';
-  }
-  if (!isIntegerInRange(input.exposureCount, MIN_EXPOSURE_COUNT, MAX_EXPOSURE_COUNT)) {
-    return `Số kiểu ảnh mỗi cuộn phải nằm trong khoảng ${MIN_EXPOSURE_COUNT}–${MAX_EXPOSURE_COUNT}.`;
-  }
-  if (
-    input.shootingIso !== undefined &&
-    input.shootingIso !== null &&
-    !isIntegerInRange(input.shootingIso, MIN_SHOOTING_ISO, MAX_SHOOTING_ISO)
-  ) {
-    return `ISO chụp thực tế cần nằm trong khoảng ${MIN_SHOOTING_ISO}–${MAX_SHOOTING_ISO}.`;
-  }
-  if (
-    input.pushPullStops !== undefined &&
-    input.pushPullStops !== null &&
-    !isIntegerInRange(input.pushPullStops, MIN_PUSH_PULL_STOPS, MAX_PUSH_PULL_STOPS)
-  ) {
-    return `Số stop Push/Pull cần nằm trong khoảng ${MIN_PUSH_PULL_STOPS} đến +${MAX_PUSH_PULL_STOPS}.`;
-  }
-  return null;
-}
-
-export type ServiceOrderValidationInput = {
-  readonly filmLabId: number;
-  readonly serviceTier: ServiceTier;
-  readonly filmHandoverMethod: HandoverMethod;
-  readonly paymentMethod: PaymentMethod;
-  readonly specialRequest?: string;
-  readonly customerAddressLine?: string;
-  readonly customerDistrict?: string;
-  readonly customerProvince?: string;
-  readonly customerPhone?: string;
-  readonly pickupWindowStartAt?: string;
-  readonly pickupWindowEndAt?: string;
-  readonly rolls: readonly FilmRollValidationInput[];
-};
-
-function validateOrderOptions(input: ServiceOrderValidationInput): string | null {
-  if (input.serviceTier !== ServiceTier.STANDARD) {
-    return 'Tùy chọn Express hiện chưa được hỗ trợ trên hệ thống.';
-  }
-  if (input.filmHandoverMethod === HandoverMethod.PARCEL_SHIPPING) {
-    return 'Phương thức gửi bưu kiện liên tỉnh hiện chưa được hỗ trợ.';
-  }
-  if (input.paymentMethod === PaymentMethod.COD) {
-    return 'Thanh toán COD hiện chưa được hỗ trợ.';
-  }
-  if (input.specialRequest && input.specialRequest.trim().length > 500) {
-    return 'Yêu cầu đặc biệt tối đa 500 ký tự.';
-  }
-  return null;
-}
-
-function validatePickupDetails(input: ServiceOrderValidationInput): string | null {
-  if (input.filmHandoverMethod !== HandoverMethod.PICKUP) {
-    return null;
-  }
-  const address = input.customerAddressLine?.trim() ?? '';
-  const district = input.customerDistrict?.trim() ?? '';
-  const province = input.customerProvince?.trim() ?? '';
-  if (!address || address.length > 255) {
-    return 'Vui lòng nhập địa chỉ lấy phim hợp lệ (tối đa 255 ký tự).';
-  }
-  if (!district || district.length > 100 || !province || province.length > 100) {
-    return 'Vui lòng nhập đầy đủ quận/huyện và tỉnh/thành phố lấy phim.';
-  }
-  const phoneError = validatePhoneNumber(input.customerPhone ?? '', true);
-  if (phoneError) {
-    return phoneError;
-  }
-  const startMs = Date.parse(input.pickupWindowStartAt ?? '');
-  const endMs = Date.parse(input.pickupWindowEndAt ?? '');
-  if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
-    return 'Khung giờ kết thúc lấy phim phải sau thời điểm bắt đầu.';
-  }
-  return null;
-}
-
-export function validateServiceOrderRequestInput(
-  input: ServiceOrderValidationInput,
-): string | null {
-  if (!Number.isInteger(input.filmLabId) || input.filmLabId <= 0) {
-    return 'Vui lòng chọn Phòng Lab hợp lệ.';
-  }
-  const optionError = validateOrderOptions(input);
-  if (optionError) {
-    return optionError;
-  }
-  const pickupError = validatePickupDetails(input);
-  if (pickupError) {
-    return pickupError;
-  }
-  if (input.rolls.length < MIN_ROLL_COUNT || input.rolls.length > MAX_ROLL_COUNT) {
-    return `Mỗi đơn hàng cần có từ ${MIN_ROLL_COUNT} đến ${MAX_ROLL_COUNT} cuộn phim.`;
-  }
-  for (const roll of input.rolls) {
-    const rollError = validateFilmRollInput(roll);
-    if (rollError) {
-      return rollError;
-    }
+  const trimmed = fullName.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) {
+    return 'Họ và tên phải từ 2 đến 100 ký tự.';
   }
   return null;
 }
 
 export function validateExpertApplicationExperience(experience: string): string | null {
   if (experience.trim().length < 20) {
-    return 'Vui lòng mô tả kinh nghiệm thực tế tối thiểu 20 ký tự (UC11 / BR-36).';
+    return 'Kinh nghiệm thực hành cần tối thiểu 20 ký tự.';
+  }
+  return null;
+}
+
+export function validateForumReplyContent(content: string): string | null {
+  if (!content.trim()) {
+    return 'Vui lòng nhập nội dung câu trả lời trước khi gửi.';
+  }
+  return null;
+}
+
+export function validateFilmRollInput(roll: FilmRollValidationInput): string | null {
+  const hasStockId = roll.filmStockId !== null && roll.filmStockId !== undefined;
+  const hasStockName = Boolean(roll.filmStockNameText?.trim());
+  if ((hasStockId && hasStockName) || (!hasStockId && !hasStockName)) {
+    return 'Phải chọn dòng phim từ danh mục hoặc nhập tên dòng phim tự do (chỉ 1 trong 2).';
+  }
+  if (hasStockName && roll.filmStockNameText && roll.filmStockNameText.trim().length > 100) {
+    return 'Tên dòng phim tự do không được vượt quá 100 ký tự.';
+  }
+  if (roll.filmFormatId <= 0) {
+    return 'Vui lòng chọn khổ phim hợp lệ.';
+  }
+  if (roll.servicePackageId <= 0) {
+    return 'Vui lòng chọn gói dịch vụ tráng scan hợp lệ.';
+  }
+  if (roll.exposureCount < MIN_EXPOSURE_COUNT || roll.exposureCount > MAX_EXPOSURE_COUNT) {
+    return `Số kiểu chụp trên cuộn phải từ ${MIN_EXPOSURE_COUNT} đến ${MAX_EXPOSURE_COUNT}.`;
+  }
+  if (roll.shootingIso < MIN_SHOOTING_ISO || roll.shootingIso > MAX_SHOOTING_ISO) {
+    return `Độ nhạy sáng ISO phải trong khoảng ${MIN_SHOOTING_ISO} đến ${MAX_SHOOTING_ISO}.`;
+  }
+  if (roll.pushPullStops < MIN_PUSH_PULL_STOPS || roll.pushPullStops > MAX_PUSH_PULL_STOPS) {
+    return `Số stop Push/Pull phải trong khoảng từ ${MIN_PUSH_PULL_STOPS} đến +${MAX_PUSH_PULL_STOPS}.`;
+  }
+  return null;
+}
+
+function validateOrderMetadata(order: ServiceOrderValidationInput): string | null {
+  if (order.filmLabId <= 0) {
+    return 'Vui lòng chọn Phòng Lab tiếp nhận.';
+  }
+  if (order.serviceTier !== ServiceTier.STANDARD) {
+    return 'Chỉ hỗ trợ gói STANDARD trong giai đoạn này.';
+  }
+  if (
+    order.filmHandoverMethod !== HandoverMethod.SELF_DROP_OFF &&
+    order.filmHandoverMethod !== HandoverMethod.PICKUP
+  ) {
+    return 'Phương thức bàn giao không được hỗ trợ trong giai đoạn này.';
+  }
+  if (order.paymentMethod !== PaymentMethod.ONLINE) {
+    return 'Chỉ hỗ trợ thanh toán trực tuyến trong giai đoạn này.';
+  }
+  if (order.specialRequest && order.specialRequest.length > 500) {
+    return 'Yêu cầu đặc biệt không được vượt quá 500 ký tự.';
+  }
+  return null;
+}
+
+function validateOrderRolls(rolls: readonly FilmRollValidationInput[]): string | null {
+  if (rolls.length < MIN_ROLL_COUNT || rolls.length > MAX_ROLL_COUNT) {
+    return `Đơn hàng phải có từ ${MIN_ROLL_COUNT} đến ${MAX_ROLL_COUNT} cuộn phim.`;
+  }
+  for (let idx = 0; idx < rolls.length; idx += 1) {
+    const roll = rolls[idx];
+    if (roll) {
+      const rollError = validateFilmRollInput(roll);
+      if (rollError) {
+        return `Cuộn #${idx + 1}: ${rollError}`;
+      }
+    }
+  }
+  return null;
+}
+
+function validatePickupWindow(
+  address?: string | null,
+  district?: string | null,
+  province?: string | null,
+  phone?: string | null,
+  startAt?: string | null,
+  endAt?: string | null,
+): string | null {
+  if (!address?.trim()) {
+    return 'Vui lòng nhập địa chỉ lấy phim.';
+  }
+  if (!district?.trim()) {
+    return 'Vui lòng nhập quận/huyện lấy phim.';
+  }
+  if (!province?.trim()) {
+    return 'Vui lòng nhập tỉnh/thành phố lấy phim.';
+  }
+  const phoneError = validatePhoneNumber(phone ?? '', true);
+  if (phoneError) {
+    return phoneError;
+  }
+  if (!startAt || !endAt) {
+    return 'Vui lòng chọn khung giờ lấy phim.';
+  }
+  if (new Date(startAt).getTime() >= new Date(endAt).getTime()) {
+    return 'Khung giờ bắt đầu phải trước khung giờ kết thúc.';
+  }
+  return null;
+}
+
+export function validateServiceOrderRequestInput(
+  order: ServiceOrderValidationInput,
+): string | null {
+  const metaError = validateOrderMetadata(order);
+  if (metaError) {
+    return metaError;
+  }
+  const rollsError = validateOrderRolls(order.rolls);
+  if (rollsError) {
+    return rollsError;
+  }
+  if (order.filmHandoverMethod === HandoverMethod.PICKUP) {
+    return validatePickupWindow(
+      order.customerAddressLine,
+      order.customerDistrict,
+      order.customerProvince,
+      order.customerPhone,
+      order.pickupWindowStartAt,
+      order.pickupWindowEndAt,
+    );
   }
   return null;
 }
 
 export function validateConsignmentOfferPrice(
-  offerPriceText: string,
-  listedPriceVnd: number,
-): { readonly valid: boolean; readonly numericPrice: number; readonly error: string | null } {
-  const numericPrice = Number(offerPriceText.replace(/[^\d]/g, ''));
-  if (!numericPrice || numericPrice < listedPriceVnd * 0.6 || numericPrice > listedPriceVnd) {
+  priceText: string,
+  currentPrice: number,
+): { readonly valid: boolean; readonly numericPrice?: number; readonly error?: string | null } {
+  const sanitized = priceText.replace(/[^0-9]/g, '');
+  const numericPrice = Number(sanitized);
+  if (!sanitized || Number.isNaN(numericPrice)) {
+    return { valid: false, error: 'Giá đề xuất không hợp lệ.' };
+  }
+  const minAllowed = currentPrice * 0.6;
+  const maxAllowed = currentPrice;
+  if (numericPrice < minAllowed || numericPrice > maxAllowed) {
     return {
       valid: false,
-      numericPrice: 0,
-      error: 'Mức giá đề xuất cần nằm trong khoảng từ 60% đến 100% giá niêm yết.',
+      error: `Giá trả phải từ 60% đến 100% giá gốc (${minAllowed.toLocaleString('vi-VN')} ₫ – ${maxAllowed.toLocaleString('vi-VN')} ₫).`,
     };
   }
   return { valid: true, numericPrice, error: null };
@@ -297,32 +320,19 @@ export function validateConsignmentOfferPrice(
 export function validateConsignmentListingInput(input: {
   readonly title: string;
   readonly priceText: string;
-}): { readonly valid: boolean; readonly numericPrice: number; readonly error: string | null } {
+}): { readonly valid: boolean; readonly numericPrice?: number; readonly error?: string | null } {
   if (!input.title.trim()) {
+    return { valid: false, error: 'Vui lòng nhập tên thiết bị ký gửi.' };
+  }
+  const sanitized = input.priceText.replace(/[^0-9]/g, '');
+  const numericPrice = Number(sanitized);
+  if (!sanitized || Number.isNaN(numericPrice) || numericPrice < MIN_CONSIGNMENT_PRICE_VND) {
     return {
       valid: false,
-      numericPrice: 0,
-      error: 'Vui lòng nhập tên thiết bị ký gửi (BR-51).',
+      error: `Giá ký gửi tối thiểu là ${MIN_CONSIGNMENT_PRICE_VND.toLocaleString('vi-VN')} ₫.`,
     };
   }
-
-  const numericPrice = Number(input.priceText.replace(/[^\d]/g, ''));
-  if (!numericPrice || numericPrice < MIN_CONSIGNMENT_PRICE_VND) {
-    return {
-      valid: false,
-      numericPrice: 0,
-      error: 'Giá ký gửi tối thiểu là 100.000 ₫.',
-    };
-  }
-
   return { valid: true, numericPrice, error: null };
-}
-
-export function validateForumReplyContent(content: string): string | null {
-  if (!content.trim()) {
-    return 'Vui lòng nhập nội dung câu trả lời trước khi gửi.';
-  }
-  return null;
 }
 
 export function getArticleStatusBadgeMeta(status: ArticleStatus): {
@@ -372,3 +382,22 @@ export function checkRoleCapabilities(role: Role): {
     isPhotographer: role === Role.PHOTOGRAPHER || isExpert,
   };
 }
+
+export const BookingDraftSchema = z.object({
+  labId: z.string(),
+  labName: z.string(),
+  packageId: z.string(),
+  packageName: z.string(),
+  unitPrice: z.number().nonnegative(),
+  filmStock: z.string(),
+  filmFormat: z.enum([FilmFormat.FORMAT_35MM, FilmFormat.FORMAT_120, FilmFormat.FORMAT_LARGE]),
+  filmProcess: z.enum([FilmProcess.C41, FilmProcess.BW, FilmProcess.E6, FilmProcess.ECN2]),
+  rollCount: z.number().int().min(MIN_ROLL_COUNT).max(MAX_ROLL_COUNT),
+  pushPullStops: z.number().int().min(MIN_PUSH_PULL_STOPS).max(MAX_PUSH_PULL_STOPS),
+  handoverMethod: z.enum([
+    HandoverMethod.SELF_DROP_OFF,
+    HandoverMethod.PICKUP,
+    HandoverMethod.PARCEL_SHIPPING,
+  ]),
+  note: z.string(),
+});

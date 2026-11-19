@@ -1,30 +1,23 @@
 import { Tabs } from 'expo-router';
-import { authStore, checkRoleCapabilities, Role } from '@/shared/domain';
+import { authStore, Role } from '@/shared/domain';
 import { useStore } from '@/shared/lib';
-import { useTheme } from '@/shared/theme';
+import { aiTabScreenOptions, tabScreenOptions, useTabScreenTheme } from '@/shared/ui';
 
 export default function TabsLayout() {
-  const { palette } = useTheme();
-  const role = useStore(authStore, (state) => state.user?.role ?? Role.PHOTOGRAPHER);
-  const { isExpert } = checkRoleCapabilities(role);
+  const isExpert = useStore(authStore, (s) => s.user?.role === Role.PHOTOGRAPHY_EXPERT);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: palette.brand,
-        tabBarInactiveTintColor: palette.textSecondary,
-        tabBarStyle: { backgroundColor: palette.surface, borderTopColor: palette.border },
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Trang chủ' }} />
-      <Tabs.Screen name="services" options={{ title: 'Đặt dịch vụ' }} />
-      <Tabs.Screen name="orders" options={{ title: 'Đơn hàng' }} />
-      <Tabs.Screen name="marketplace" options={{ title: 'Chợ ký gửi' }} />
-      <Tabs.Screen name="community" options={{ title: 'Cộng đồng' }} />
+    <Tabs screenOptions={useTabScreenTheme()}>
+      <Tabs.Screen name="index" options={tabScreenOptions('Trang chủ', 'home-outline')} />
+      <Tabs.Screen name="services" options={tabScreenOptions('Dịch vụ', 'color-filter-outline')} />
+      <Tabs.Screen name="orders" options={tabScreenOptions('Đơn hàng', 'receipt-outline')} />
+      <Tabs.Screen name="ai" options={aiTabScreenOptions()} />
+      <Tabs.Screen name="marketplace" options={tabScreenOptions('Chợ phim', 'pricetag-outline')} />
+      <Tabs.Screen name="community" options={tabScreenOptions('Cộng đồng', 'people-outline')} />
+      <Tabs.Screen name="profile" options={tabScreenOptions('Hồ sơ', 'person-outline')} />
       <Tabs.Screen
         name="expert"
-        options={{ href: isExpert ? '/(tabs)/expert' : null, title: 'Chuyên gia' }}
+        options={tabScreenOptions('Chuyên gia', 'sparkles-outline', isExpert ? undefined : null)}
       />
     </Tabs>
   );

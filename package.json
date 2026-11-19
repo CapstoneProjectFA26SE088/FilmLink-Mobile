@@ -28,6 +28,7 @@
     "verify:full": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify/run.ts --full"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@tanstack/react-query": "^5.107.1",
     "expo": "~58.0.26",
     "expo-constants": "~58.0.16",

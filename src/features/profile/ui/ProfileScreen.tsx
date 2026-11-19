@@ -15,7 +15,6 @@ import {
 import { useStore } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 import {
-  AppHeader,
   Badge,
   Button,
   Card,
@@ -84,19 +83,14 @@ export function ProfileScreen() {
   };
 
   return (
-    <Screen
-      testID="profile.screen"
-      scroll
-      header={
-        <AppHeader
-          title="Hồ sơ & Cài đặt"
-          subtitle="Quản lý thông tin, giao diện & phân quyền"
-          showBack
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="profile.screen" scroll edges="top">
       <VStack gap="md">
+        <VStack gap="none" className="pt-2">
+          <Text variant="title">Hồ sơ & Cài đặt</Text>
+          <Text variant="caption" tone="muted">
+            Quản lý thông tin cá nhân, giao diện & bảo mật
+          </Text>
+        </VStack>
         <Card>
           <VStack gap="sm">
             <HStack justify="between" align="center">

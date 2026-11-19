@@ -35,21 +35,20 @@ export function ResetPasswordScreen() {
   };
 
   return (
-    <Screen testID="auth.reset.screen" scroll>
-      <VStack gap="lg">
-        <VStack gap="xs">
+    <Screen testID="auth.reset.screen" scroll centerContent>
+      <VStack gap="md" className="w-full max-w-sm self-center">
+        <VStack gap="xs" align="center">
           <Badge label="BẢO MẬT TÀI KHOẢN" tone="brand" />
-          <Text variant="title" accessibilityRole="header">
+          <Text variant="title" accessibilityRole="header" className="text-center">
             Tạo mật khẩu mới
           </Text>
-          <Text variant="secondary" tone="secondary">
-            Đặt lại mật khẩu cho tài khoản {params.email ?? 'của bạn'}. Mật khẩu từ 8 đến 72 ký tự,
-            gồm cả chữ và số.
+          <Text variant="secondary" tone="muted" className="text-center">
+            Đặt lại mật khẩu cho tài khoản {params.email ?? 'của bạn'}.
           </Text>
         </VStack>
 
-        <Card>
-          <VStack gap="md">
+        <Card className="w-full">
+          <VStack gap="sm">
             <Input
               testID="auth.reset.password"
               label="Mật khẩu mới (>= 8 ký tự, chữ + số)"

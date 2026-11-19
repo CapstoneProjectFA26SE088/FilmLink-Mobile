@@ -114,6 +114,7 @@ export type {
   WorkshopEvent,
 } from './types';
 export {
+  BookingDraftSchema,
   calculateBookingPricing,
   checkRoleCapabilities,
   type FilmRollValidationInput,

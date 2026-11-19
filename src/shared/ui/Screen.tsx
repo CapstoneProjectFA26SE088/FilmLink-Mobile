@@ -12,6 +12,7 @@ export type ScreenProps = {
   readonly padded?: boolean;
   readonly header?: ReactNode;
   readonly className?: string;
+  readonly centerContent?: boolean;
 };
 
 export function Screen({
@@ -22,19 +23,39 @@ export function Screen({
   padded = true,
   header,
   className,
+  centerContent = false,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { palette } = useTheme();
 
   const innerContent = scroll ? (
     <ScrollView
-      contentContainerClassName={cn(padded && 'px-4 py-4', className)}
+      contentContainerClassName={cn(
+        padded && 'px-4 py-4',
+        centerContent && 'flex-grow justify-center',
+        className,
+      )}
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: centerContent ? 'center' : undefined,
+      }}
       keyboardShouldPersistTaps="handled"
     >
-      {children}
+      <View className={cn('w-full max-w-lg self-center', centerContent && 'flex-1 justify-center')}>
+        {children}
+      </View>
     </ScrollView>
   ) : (
-    <View className={cn('flex-1', padded && 'px-4 py-4', className)}>{children}</View>
+    <View
+      className={cn(
+        'flex-1 w-full max-w-lg self-center',
+        padded && 'px-4 py-4',
+        centerContent && 'justify-center',
+        className,
+      )}
+    >
+      {children}
+    </View>
   );
 
   return (

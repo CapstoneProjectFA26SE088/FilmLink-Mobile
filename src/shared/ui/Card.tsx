@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
@@ -15,11 +15,12 @@ export type CardTone =
 export type CardProps = {
   readonly children: ReactNode;
   readonly tone?: CardTone;
+  readonly onPress?: () => void;
   readonly className?: string;
   readonly testID?: string;
 };
 
-export function Card({ children, tone = 'default', className, testID }: CardProps) {
+export function Card({ children, tone = 'default', onPress, className, testID }: CardProps) {
   const { palette } = useTheme();
 
   const toneMap: Record<CardTone, { readonly bg: string; readonly border: string }> = {
@@ -33,11 +34,26 @@ export function Card({ children, tone = 'default', className, testID }: CardProp
   };
 
   const visual = toneMap[tone];
+  const cardClassName = cn('rounded-2xl border p-4', onPress && 'active:opacity-90', className);
+
+  if (onPress) {
+    return (
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        onPress={onPress}
+        className={cardClassName}
+        style={{ backgroundColor: visual.bg, borderColor: visual.border }}
+      >
+        {children}
+      </Pressable>
+    );
+  }
 
   return (
     <View
       testID={testID}
-      className={cn('rounded-lg border p-4', className)}
+      className={cardClassName}
       style={{ backgroundColor: visual.bg, borderColor: visual.border }}
     >
       {children}

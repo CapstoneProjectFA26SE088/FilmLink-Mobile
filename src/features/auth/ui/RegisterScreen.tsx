@@ -72,21 +72,20 @@ export function RegisterScreen() {
   };
 
   return (
-    <Screen testID="auth.register.screen" scroll>
-      <VStack gap="lg">
-        <VStack gap="xs">
-          <Badge label="UC06 · ĐĂNG KÝ PHOTOGRAPHER" tone="brand" />
-          <Text variant="title" accessibilityRole="header">
+    <Screen testID="auth.register.screen" scroll centerContent>
+      <VStack gap="md" className="w-full max-w-sm self-center">
+        <VStack gap="xs" align="center">
+          <Badge label="ĐĂNG KÝ NHIẾP ẢNH GIA" tone="brand" />
+          <Text variant="title" accessibilityRole="header" className="text-center">
             Tạo tài khoản mới
           </Text>
-          <Text variant="secondary" tone="secondary">
-            Tài khoản mặc định có vai trò Photographer (BR-01). Sau khi sử dụng bạn có thể nộp hồ sơ
-            nâng cấp lên Photography Expert.
+          <Text variant="secondary" tone="muted" className="text-center">
+            Tham gia cộng đồng và dịch vụ tráng scan FilmLink
           </Text>
         </VStack>
 
-        <Card>
-          <VStack gap="md">
+        <Card className="w-full">
+          <VStack gap="sm">
             <Input
               testID="auth.register.name"
               label="Họ và tên (2–100 ký tự)"

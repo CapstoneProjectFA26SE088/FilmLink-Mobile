@@ -38,7 +38,8 @@ export function FilterChipGroup<T extends string>({
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         onPress={() => onChange(opt.value)}
-        className="rounded-full border px-3 py-1.5"
+        hitSlop={6}
+        className="rounded-full border px-3.5 py-2 active:opacity-80"
         style={{
           backgroundColor: active ? palette.brandSoft : palette.surface,
           borderColor: active ? palette.brand : palette.border,

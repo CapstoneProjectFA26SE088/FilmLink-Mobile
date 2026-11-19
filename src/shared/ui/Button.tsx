@@ -1,10 +1,18 @@
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Text as NativeText, Pressable } from 'react-native';
 import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
 const sizeClass = {
-  sm: 'min-h-9 px-3',
-  md: 'min-h-12 px-5',
+  sm: 'min-h-9 h-9 px-3 py-1.5 rounded-lg',
+  md: 'min-h-11 h-11 px-4 py-2 rounded-xl',
+  lg: 'min-h-12 h-12 px-5 py-2.5 rounded-xl',
+} as const;
+
+const labelSizeClass = {
+  sm: 'text-xs font-semibold',
+  md: 'text-sm font-semibold',
+  lg: 'text-base font-semibold',
 } as const;
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
@@ -16,6 +24,7 @@ export type ButtonProps = {
   readonly testID: string;
   readonly variant?: ButtonVariant;
   readonly size?: ButtonSize;
+  readonly icon?: ReactNode;
   readonly disabled?: boolean;
   readonly loading?: boolean;
   readonly className?: string;
@@ -27,6 +36,7 @@ export function Button({
   testID,
   variant = 'primary',
   size = 'md',
+  icon,
   disabled = false,
   loading = false,
   className,
@@ -75,8 +85,9 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={onPress}
+      hitSlop={8}
       className={cn(
-        'flex-row items-center justify-center gap-2 rounded border',
+        'flex-row items-center justify-center gap-2 border active:opacity-80',
         sizeClass[size],
         isDisabled && 'opacity-50',
         className,
@@ -87,10 +98,8 @@ export function Button({
       }}
     >
       {loading ? <ActivityIndicator size="small" color={visual.text} /> : null}
-      <NativeText
-        className={cn(size === 'sm' ? 'text-sm font-semibold' : 'text-base font-semibold')}
-        style={{ color: visual.text }}
-      >
+      {!loading && icon ? icon : null}
+      <NativeText className={labelSizeClass[size]} style={{ color: visual.text }}>
         {label}
       </NativeText>
     </Pressable>

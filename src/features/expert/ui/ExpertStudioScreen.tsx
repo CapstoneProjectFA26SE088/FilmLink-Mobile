@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { authStore, Role } from '@/shared/domain';
 import { useStore } from '@/shared/lib';
-import { AppHeader, EmptyState, Screen, SegmentedControl, VStack } from '@/shared/ui';
+import { EmptyState, Screen, SegmentedControl, Text, VStack } from '@/shared/ui';
 import { canAccessExpertStudio, type StudioTab } from '../model/expert';
 import {
   ExpertArticlesSection,
@@ -18,29 +18,24 @@ export function ExpertStudioScreen() {
   const [studioTab, setStudioTab] = useState<StudioTab>('articles');
 
   return (
-    <Screen
-      testID="expert.studio.screen"
-      scroll
-      edges="top"
-      header={
-        <AppHeader
-          title="Không gian Chuyên gia"
-          subtitle="Expert Studio: Xuất bản KB, Cố vấn & Workshop"
-          isExpert={hasAccess}
-        />
-      }
-    >
+    <Screen testID="expert.studio.screen" scroll edges="top">
       {!hasAccess ? (
         <EmptyState
           testID="expert.studio.locked"
           actionTestID="expert.studio.open-upgrade"
-          title="Khu vực dành riêng cho Photography Expert"
-          description="Theo phân cấp vai trò BR-05 (PHOTOGRAPHY_EXPERT ⊃ PHOTOGRAPHER), bạn cần nâng cấp lên Chuyên gia để truy cập."
-          actionLabel="Nộp hồ sơ nâng cấp Chuyên gia (UC11)"
+          title="Khu vực dành riêng cho Chuyên gia Nhiếp ảnh"
+          description="Bạn cần nâng cấp lên Chuyên gia FilmLink để xuất bản cẩm nang, cố vấn cộng đồng và tổ chức Workshop."
+          actionLabel="Nộp hồ sơ nâng cấp Chuyên gia"
           onAction={() => router.push('/(modals)/expert-upgrade')}
         />
       ) : (
         <VStack gap="md">
+          <VStack gap="none" className="pt-2">
+            <Text variant="title">Không gian Chuyên gia</Text>
+            <Text variant="caption" tone="muted">
+              Expert Studio: Xuất bản cẩm nang, Cố vấn & Workshop
+            </Text>
+          </VStack>
           <SegmentedControl
             testIDPrefix="expert.studio.tab"
             options={[

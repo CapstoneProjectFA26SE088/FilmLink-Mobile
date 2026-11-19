@@ -7,10 +7,10 @@ import {
   SUGGESTED_PROMPTS,
 } from '@/shared/domain';
 import {
-  AppHeader,
   Badge,
   Button,
   Card,
+  HStack,
   Input,
   Screen,
   SegmentedControl,
@@ -47,19 +47,23 @@ export function AiAdvisorScreen() {
   };
 
   return (
-    <Screen
-      testID="ai.screen"
-      scroll
-      header={
-        <AppHeader
-          title="Trợ lý AI FilmLink"
-          subtitle="Tư vấn Knowledge Base & Chẩn đoán Scan"
-          showBack
-          showRoleBadge={false}
-        />
-      }
-    >
+    <Screen testID="ai.screen" scroll edges="top">
       <VStack gap="md">
+        <HStack justify="between" align="center" className="pt-2">
+          <VStack gap="none" className="flex-1">
+            <Text variant="title">Trợ lý AI FilmLink</Text>
+            <Text variant="caption" tone="muted">
+              Tư vấn Knowledge Base & Chẩn đoán Scan
+            </Text>
+          </VStack>
+          <Button
+            testID="ai.back"
+            label="Đóng"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.back()}
+          />
+        </HStack>
         <SegmentedControl
           testIDPrefix="ai.mode"
           options={[

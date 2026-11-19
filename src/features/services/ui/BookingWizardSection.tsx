@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import {
+  type BookingDraft,
+  BookingDraftSchema,
   calculateBookingPricing,
   createServiceOrder,
   draftStore,
@@ -8,8 +10,20 @@ import {
   resetBookingDraft,
   updateBookingDraft,
 } from '@/shared/domain';
+import { useDraftPersistence } from '@/shared/hooks';
 import { formatVnd, useStore } from '@/shared/lib';
-import { Badge, Button, Card, FilterChipGroup, HStack, Input, Text, VStack } from '@/shared/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  DraftRecoveryBanner,
+  FilterChipGroup,
+  HStack,
+  Icon,
+  Input,
+  Text,
+  VStack,
+} from '@/shared/ui';
 import { clampPushPullStops, clampRollCount } from '../model/services';
 
 export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreated: () => void }) {
@@ -17,7 +31,25 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
   const [error, setError] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
+  const {
+    hasRecoverableDraft,
+    pendingRetry,
+    lastErrorDetail,
+    lastSavedAt,
+    restoreDraft,
+    clearDraft,
+  } = useDraftPersistence<BookingDraft>({
+    flowKey: 'services_booking_wizard',
+    schema: BookingDraftSchema,
+    initialDraft: draft,
+    isEmpty: (d) => !d.filmStock.trim(),
+  });
+
   const pricing = calculateBookingPricing(draft.unitPrice, draft.rollCount, draft.pushPullStops);
+
+  const handleRestoreDraft = () => {
+    restoreDraft();
+  };
 
   const handleSubmit = () => {
     try {
@@ -27,6 +59,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
       });
       setError(null);
       setCreatedOrderId(order.id);
+      void clearDraft();
       resetBookingDraft();
       onOrderCreated();
     } catch (err) {
@@ -36,6 +69,16 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
 
   return (
     <VStack gap="md">
+      <DraftRecoveryBanner
+        testID="services.booking.draft-recovery"
+        visible={hasRecoverableDraft}
+        pendingRetry={pendingRetry}
+        lastErrorDetail={lastErrorDetail}
+        lastSavedAt={lastSavedAt}
+        onRestore={handleRestoreDraft}
+        onDiscard={() => void clearDraft()}
+      />
+
       {createdOrderId ? (
         <Card tone="success">
           <Text variant="secondary" tone="success">
@@ -65,6 +108,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
               updateBookingDraft({ filmStock: text });
             }}
             placeholder="Kodak Portra 400"
+            icon={<Icon name="camera-outline" size="sm" tone="muted" />}
           />
 
           <FilterChipGroup
@@ -76,7 +120,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
             scrollable
           />
 
-          <HStack justify="between" align="center">
+          <HStack justify="between" align="center" className="py-1">
             <VStack gap="none">
               <Text variant="secondary">Số lượng cuộn</Text>
               <Text variant="caption" tone="muted">
@@ -89,16 +133,20 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
                 label="-"
                 size="sm"
                 variant="outline"
+                className="w-11"
                 onPress={() =>
                   updateBookingDraft({ rollCount: clampRollCount(draft.rollCount, -1) })
                 }
               />
-              <Text variant="heading">{draft.rollCount}</Text>
+              <Text variant="heading" className="w-8 text-center">
+                {draft.rollCount}
+              </Text>
               <Button
                 testID="services.booking.rolls-inc"
                 label="+"
                 size="sm"
                 variant="outline"
+                className="w-11"
                 onPress={() =>
                   updateBookingDraft({ rollCount: clampRollCount(draft.rollCount, 1) })
                 }
@@ -106,7 +154,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
             </HStack>
           </HStack>
 
-          <HStack justify="between" align="center">
+          <HStack justify="between" align="center" className="py-1">
             <VStack gap="none">
               <Text variant="secondary">Push / Pull (Stops)</Text>
               <Text variant="caption" tone="muted">
@@ -119,11 +167,12 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
                 label="-"
                 size="sm"
                 variant="outline"
+                className="w-11"
                 onPress={() =>
                   updateBookingDraft({ pushPullStops: clampPushPullStops(draft.pushPullStops, -1) })
                 }
               />
-              <Text variant="heading">
+              <Text variant="heading" className="w-8 text-center">
                 {draft.pushPullStops > 0 ? `+${draft.pushPullStops}` : draft.pushPullStops}
               </Text>
               <Button
@@ -131,6 +180,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
                 label="+"
                 size="sm"
                 variant="outline"
+                className="w-11"
                 onPress={() =>
                   updateBookingDraft({ pushPullStops: clampPushPullStops(draft.pushPullStops, 1) })
                 }
@@ -152,6 +202,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
             value={draft.note}
             onChangeText={(note) => updateBookingDraft({ note })}
             placeholder="Ví dụ: giữ nguyên vỏ cuộn, ưu tiên tone da tự nhiên..."
+            icon={<Icon name="document-text-outline" size="sm" tone="muted" />}
           />
 
           <Card tone="muted">
@@ -168,9 +219,9 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
                 </Text>
                 <Text variant="caption">{formatVnd(pricing.pushPullFee)}</Text>
               </HStack>
-              <HStack justify="between">
+              <HStack justify="between" align="center" className="pt-1 border-t border-border">
                 <Text variant="heading">Tổng thanh toán</Text>
-                <Text variant="heading" tone="brand">
+                <Text variant="title" tone="brand">
                   {formatVnd(pricing.totalPrice)}
                 </Text>
               </HStack>
@@ -187,6 +238,7 @@ export function BookingWizardSection({ onOrderCreated }: { readonly onOrderCreat
             testID="services.booking.submit"
             label="Xác nhận đặt tráng & scan"
             variant="primary"
+            size="lg"
             onPress={handleSubmit}
           />
         </VStack>

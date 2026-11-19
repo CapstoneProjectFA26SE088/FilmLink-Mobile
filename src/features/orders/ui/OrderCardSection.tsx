@@ -10,7 +10,7 @@ import {
   submitOrderLabReview,
 } from '@/shared/domain';
 import { formatDateVn, formatVnd } from '@/shared/lib';
-import { Badge, Button, Card, HStack, Input, MediaImage, Text, VStack } from '@/shared/ui';
+import { Badge, Button, Card, HStack, Icon, Input, MediaImage, Text, VStack } from '@/shared/ui';
 
 function ScanArchiveSection({
   orderId,
@@ -45,7 +45,7 @@ function ScanArchiveSection({
     <Card tone="muted">
       <VStack gap="sm">
         <HStack justify="between" align="center">
-          <Text variant="secondary">Lưu trữ ảnh Scan số (BR-08)</Text>
+          <Text variant="secondary">Lưu trữ ảnh Scan số độ phân giải cao</Text>
           <Badge label={`Frame #${frame.frameNumber}`} tone="info" />
         </HStack>
 
@@ -80,6 +80,7 @@ function ScanArchiveSection({
             size="sm"
             variant="secondary"
             className="flex-1"
+            icon={<Icon name="cloud-download-outline" size="xs" tone="brand" />}
             onPress={() => setDownloadedId(frame.id)}
           />
           <Button
@@ -88,6 +89,7 @@ function ScanArchiveSection({
             size="sm"
             variant="outline"
             className="flex-1"
+            icon={<Icon name="sparkles" size="xs" tone="default" />}
             onPress={() => setAnalysis(analyzeFilmScanQuality(frame.frameNumber))}
           />
         </HStack>
@@ -106,7 +108,7 @@ function ScanArchiveSection({
 
         <Input
           testID={`orders.rescan-input.${orderId}`}
-          label="Yêu cầu quét lại khung phim (BR-27)"
+          label="Yêu cầu quét lại khung phim"
           value={rescanReason}
           onChangeText={setRescanReason}
           error={rescanError}
@@ -128,20 +130,27 @@ function OrderTimelineSection({ timeline }: { readonly timeline: ServiceOrder['t
   return (
     <VStack gap="xs">
       {timeline.map((step) => {
-        const icon = step.isDone ? '✓' : step.isCurrent ? '●' : '○';
+        const iconName = step.isDone
+          ? 'checkmark-circle'
+          : step.isCurrent
+            ? 'ellipse'
+            : 'ellipse-outline';
         const tone = step.isCurrent ? 'brand' : step.isDone ? 'success' : 'muted';
         return (
           <HStack key={step.stage} justify="between" align="center" gap="sm">
-            <VStack gap="none" className="flex-1">
-              <Text variant="caption" tone={tone}>
-                {icon} {step.label}
-              </Text>
-              {step.technicianNote ? (
-                <Text variant="caption" tone="muted">
-                  {step.technicianNote}
+            <HStack gap="xs" align="center" className="flex-1">
+              <Icon name={iconName} size="xs" tone={tone} />
+              <VStack gap="none" className="flex-1">
+                <Text variant="caption" tone={tone}>
+                  {step.label}
                 </Text>
-              ) : null}
-            </VStack>
+                {step.technicianNote ? (
+                  <Text variant="caption" tone="muted">
+                    {step.technicianNote}
+                  </Text>
+                ) : null}
+              </VStack>
+            </HStack>
             {step.completedAt ? (
               <Text variant="caption" tone="muted">
                 {formatDateVn(step.completedAt)}
@@ -163,7 +172,7 @@ function LabReviewSection({ order }: { readonly order: ServiceOrder }) {
   return (
     <Card tone="muted">
       <VStack gap="xs">
-        <Text variant="secondary">Đánh giá Phòng Lab (BR-33)</Text>
+        <Text variant="secondary">Đánh giá chất lượng Phòng Lab</Text>
         <HStack gap="xs">
           {[1, 2, 3, 4, 5].map((star) => (
             <Button
@@ -230,7 +239,7 @@ export function OrderCardSection({
 
         <Button
           testID={`orders.toggle.${order.id}`}
-          label={expanded ? 'Thu gọn chi tiết' : 'Xem 6 bước & Scan số'}
+          label={expanded ? 'Thu gọn chi tiết' : 'Xem tiến độ & Ảnh scan'}
           size="sm"
           variant="outline"
           onPress={() => setExpanded((prev) => !prev)}

@@ -85,23 +85,20 @@ export function VerifyOtpScreen() {
   };
 
   return (
-    <Screen testID="auth.otp.screen" scroll>
-      <VStack gap="lg">
-        <VStack gap="xs">
-          <Badge
-            label={isPasswordReset ? 'KHÔI PHỤC MẬT KHẨU' : 'UC06 · XÁC THỰC EMAIL'}
-            tone="info"
-          />
-          <Text variant="title" accessibilityRole="header">
+    <Screen testID="auth.otp.screen" scroll centerContent>
+      <VStack gap="md" className="w-full max-w-sm self-center">
+        <VStack gap="xs" align="center">
+          <Badge label={isPasswordReset ? 'KHÔI PHỤC MẬT KHẨU' : 'XÁC THỰC EMAIL'} tone="info" />
+          <Text variant="title" accessibilityRole="header" className="text-center">
             {isPasswordReset ? 'Xác thực đặt lại mật khẩu' : 'Xác thực OTP qua Email'}
           </Text>
-          <Text variant="secondary" tone="secondary">
+          <Text variant="secondary" tone="muted" className="text-center">
             Mã xác thực 6 chữ số đã gửi tới {email}.
           </Text>
         </VStack>
 
-        <Card>
-          <VStack gap="md">
+        <Card className="w-full">
+          <VStack gap="sm">
             <Input
               testID="auth.otp.code"
               label="Mã OTP (6 chữ số)"

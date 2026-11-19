@@ -1,8 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-  authStore,
-  checkRoleCapabilities,
   draftStore,
   type FilmFormat,
   type FilmLab,
@@ -10,19 +8,18 @@ import {
   FORMAT_FILTERS,
   filmLinkStore,
   PROCESS_FILTERS,
-  Role,
   type ServicePackage,
   selectLabPackageForBooking,
 } from '@/shared/domain';
 import { formatVnd, useStore } from '@/shared/lib';
 import {
-  AppHeader,
   Badge,
   Button,
   Card,
   EmptyState,
   FilterChipGroup,
   HStack,
+  Icon,
   Input,
   Screen,
   SegmentedControl,
@@ -43,41 +40,50 @@ function LabPackageCard({
 }) {
   return (
     <Card>
-      <VStack gap="sm">
-        <HStack justify="between" align="center">
-          <VStack gap="none" className="flex-1">
-            <Text variant="heading">{lab.name}</Text>
+      <VStack gap="md">
+        <HStack justify="between" align="start">
+          <VStack gap="none" className="flex-1 pr-2">
+            <HStack gap="xs" align="center">
+              <Text variant="heading">{lab.name}</Text>
+              <Icon name="checkmark-circle" size="xs" tone="brand" />
+            </HStack>
             <Text variant="caption" tone="muted">
               {lab.address}
             </Text>
           </VStack>
-          <Badge label={`★ ${lab.rating} (${lab.reviewCount})`} tone="success" />
+          <Badge
+            label={`★ ${lab.rating} (${lab.reviewCount})`}
+            tone="success"
+            icon={<Icon name="star" size="xs" tone="success" />}
+          />
         </HStack>
-        <Text variant="secondary" tone="secondary">
+        <Text variant="body" tone="secondary">
           {lab.description}
         </Text>
-        {lab.packages.map((pkg) => {
-          const isSelected = pkg.id === selectedPackageId;
-          return (
-            <Card key={pkg.id} tone={isSelected ? 'brand' : 'muted'}>
-              <HStack justify="between" align="center" gap="sm">
-                <VStack gap="none" className="flex-1">
-                  <Text variant="secondary">{pkg.name}</Text>
-                  <Text variant="caption" tone="muted">
-                    {pkg.turnaroundDays} · {pkg.resolutionDpi}
-                  </Text>
-                </VStack>
-                <Button
-                  testID={`services.pkg.${pkg.id}`}
-                  label={formatVnd(pkg.priceVnd)}
-                  size="sm"
-                  variant={isSelected ? 'primary' : 'outline'}
-                  onPress={() => onSelect(lab, pkg)}
-                />
-              </HStack>
-            </Card>
-          );
-        })}
+        <VStack gap="xs">
+          {lab.packages.map((pkg) => {
+            const isSelected = pkg.id === selectedPackageId;
+            return (
+              <Card key={pkg.id} tone={isSelected ? 'brand' : 'muted'} className="p-3">
+                <HStack justify="between" align="center" gap="sm">
+                  <VStack gap="none" className="flex-1">
+                    <Text variant="secondary">{pkg.name}</Text>
+                    <Text variant="caption" tone="muted">
+                      {pkg.turnaroundDays} · {pkg.resolutionDpi}
+                    </Text>
+                  </VStack>
+                  <Button
+                    testID={`services.pkg.${pkg.id}`}
+                    label={formatVnd(pkg.priceVnd)}
+                    size="sm"
+                    variant={isSelected ? 'primary' : 'outline'}
+                    onPress={() => onSelect(lab, pkg)}
+                  />
+                </HStack>
+              </Card>
+            );
+          })}
+        </VStack>
       </VStack>
     </Card>
   );
@@ -87,8 +93,6 @@ export function ServicesScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const labs = useStore(filmLinkStore, (state) => state.labs);
   const selectedPackageId = useStore(draftStore, (state) => state.bookingDraft.packageId);
-  const userRole = useStore(authStore, (state) => state.user?.role ?? Role.PHOTOGRAPHER);
-  const { isExpert } = checkRoleCapabilities(userRole);
 
   const [tabOverride, setTabOverride] = useState<'directory' | 'booking' | null>(null);
   const activeTab = tabOverride ?? (params.tab === 'booking' ? 'booking' : 'directory');
@@ -105,19 +109,14 @@ export function ServicesScreen() {
   };
 
   return (
-    <Screen
-      testID="services.screen"
-      scroll
-      edges="top"
-      header={
-        <AppHeader
-          title="Đặt dịch vụ Phòng Lab"
-          subtitle="Tìm phòng tối xác minh & Đặt lịch tráng scan"
-          isExpert={isExpert}
-        />
-      }
-    >
+    <Screen testID="services.screen" scroll edges="top">
       <VStack gap="md">
+        <VStack gap="none" className="pt-2">
+          <Text variant="title">Dịch vụ Phòng Lab</Text>
+          <Text variant="caption" tone="muted">
+            Tìm phòng tối xác minh & Đặt lịch tráng scan
+          </Text>
+        </VStack>
         <SegmentedControl
           testIDPrefix="services.tab"
           options={[
@@ -134,12 +133,13 @@ export function ServicesScreen() {
               testID="services.search"
               value={search}
               onChangeText={setSearch}
-              placeholder="Tìm theo tên Phòng Lab hoặc thành phố (TP.HCM, Hà Nội)..."
+              placeholder="Tìm theo tên Phòng Lab hoặc thành phố..."
+              icon={<Icon name="search-outline" size="sm" tone="muted" />}
             />
 
             <FilterChipGroup
               testIDPrefix="services.process"
-              label="Lọc theo hóa chất tráng (Process)"
+              label="Hóa chất tráng (Process)"
               options={PROCESS_FILTERS}
               value={process}
               onChange={setProcess}
@@ -148,7 +148,7 @@ export function ServicesScreen() {
 
             <FilterChipGroup
               testIDPrefix="services.format"
-              label="Lọc theo khổ phim (Film Format)"
+              label="Khổ phim (Film Format)"
               options={FORMAT_FILTERS}
               value={format}
               onChange={setFormat}
@@ -162,6 +162,7 @@ export function ServicesScreen() {
                 title="Không tìm thấy Phòng Lab phù hợp"
                 description="Hãy thử đặt lại bộ lọc quy trình hóa chất hoặc khổ phim."
                 actionLabel="Xóa bộ lọc"
+                icon={<Icon name="search" size="lg" tone="muted" />}
                 onAction={() => {
                   setSearch('');
                   setProcess('ALL');
