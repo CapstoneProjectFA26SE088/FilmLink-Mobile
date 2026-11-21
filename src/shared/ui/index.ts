@@ -25,6 +25,14 @@ export { IconButton, type IconButtonProps } from './IconButton';
 export { Input, type InputProps } from './Input';
 export { MediaImage, type MediaImageProps } from './MediaImage';
 export { aiTabScreenOptions, tabScreenOptions, useTabScreenTheme } from './navigation';
+export {
+  applyOtpBackspace,
+  applyOtpBoxChange,
+  OtpCodeInput,
+  type OtpCodeInputProps,
+  type OtpEditResult,
+  parseOtpSlots,
+} from './OtpCodeInput';
 export { Screen, type ScreenProps } from './Screen';
 export {
   SegmentedControl,

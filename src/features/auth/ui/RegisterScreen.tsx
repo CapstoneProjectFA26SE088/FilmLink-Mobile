@@ -5,7 +5,6 @@ import { OtpPurpose, validateRegistrationForm } from '@/shared/domain';
 import { getFieldErrors } from '@/shared/lib';
 import {
   Alert,
-  Badge,
   BrandMark,
   Button,
   Card,

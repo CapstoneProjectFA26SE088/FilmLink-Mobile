@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react';
-import { Text as NativeText, View } from 'react-native';
+import { Text as NativeText, Pressable, View } from 'react-native';
 import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
-export type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
+export type BadgeTone = 'neutral' | 'brand' | 'surface' | 'success' | 'warning' | 'danger' | 'info';
 
 export type BadgeProps = {
   readonly label: string;
   readonly tone?: BadgeTone;
   readonly dot?: boolean;
   readonly icon?: ReactNode;
+  readonly trailingIcon?: ReactNode;
+  readonly onPress?: () => void;
+  readonly accessibilityLabel?: string;
   readonly testID?: string;
   readonly className?: string;
 };
@@ -19,6 +22,9 @@ export function Badge({
   tone = 'neutral',
   dot = false,
   icon,
+  trailingIcon,
+  onPress,
+  accessibilityLabel,
   testID,
   className,
 }: BadgeProps) {
@@ -37,6 +43,11 @@ export function Badge({
       bg: palette.brandSoft,
       border: palette.brand,
       text: palette.link,
+    },
+    surface: {
+      bg: palette.surface,
+      border: palette.border,
+      text: palette.textPrimary,
     },
     success: {
       bg: palette.status.successBg,
@@ -61,16 +72,13 @@ export function Badge({
   };
 
   const visual = toneMap[tone];
-
-  return (
-    <View
-      testID={testID}
-      className={cn(
-        'self-start flex-row items-center gap-1.5 rounded-full border px-2.5 py-0.5',
-        className,
-      )}
-      style={{ backgroundColor: visual.bg, borderColor: visual.border }}
-    >
+  const containerClass = cn(
+    'self-start flex-row items-center gap-1.5 rounded-full border px-2.5 py-0.5',
+    onPress && 'active:opacity-80',
+    className,
+  );
+  const content = (
+    <>
       {dot ? (
         <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: palette.brand }} />
       ) : null}
@@ -78,6 +86,33 @@ export function Badge({
       <NativeText className="text-xs font-semibold tracking-wide" style={{ color: visual.text }}>
         {label}
       </NativeText>
+      {trailingIcon}
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        hitSlop={6}
+        onPress={onPress}
+        className={containerClass}
+        style={{ backgroundColor: visual.bg, borderColor: visual.border }}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View
+      testID={testID}
+      className={containerClass}
+      style={{ backgroundColor: visual.bg, borderColor: visual.border }}
+    >
+      {content}
     </View>
   );
 }

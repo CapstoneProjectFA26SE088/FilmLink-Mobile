@@ -8,6 +8,15 @@ import {
 } from '@/shared/domain';
 import { getErrorMessage, hasErrorCode, isNetworkError } from '@/shared/lib';
 
+export const OTP_EXPIRY_SECONDS = 300;
+
+export function formatCountdownMmSs(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const mm = String(Math.floor(safe / 60)).padStart(2, '0');
+  const ss = String(safe % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
 export function resolveLoginRole(email: string, selectedRole?: Role): Role {
   if (selectedRole) {
     return selectedRole;
