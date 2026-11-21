@@ -48,6 +48,7 @@ reports/
 scripts/
 test/
 .vscode/
+.idea/
 *.md
 
 LICENSE

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "expo-foundation",
-    "slug": "expo-foundation",
-    "scheme": "expofoundation",
+    "name": "FilmLink",
+    "slug": "film-link",
+    "scheme": "filmlink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

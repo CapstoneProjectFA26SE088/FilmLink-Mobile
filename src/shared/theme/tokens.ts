@@ -1,10 +1,11 @@
-export type ThemePalette = {
+﻿export type ThemePalette = {
   readonly brand: string;
   readonly brandIcon: string;
   readonly brandHover: string;
   readonly brandSoft: string;
   readonly brandForeground: string;
   readonly focusRing: string;
+  readonly link: string;
   readonly background: string;
   readonly surface: string;
   readonly surfaceMuted: string;
@@ -17,12 +18,16 @@ export type ThemePalette = {
   readonly borderStrong: string;
   readonly status: {
     readonly successBg: string;
+    readonly successBorder: string;
     readonly successText: string;
     readonly warningBg: string;
+    readonly warningBorder: string;
     readonly warningText: string;
     readonly errorBg: string;
+    readonly errorBorder: string;
     readonly errorText: string;
     readonly infoBg: string;
+    readonly infoBorder: string;
     readonly infoText: string;
   };
 };
@@ -34,24 +39,29 @@ export const lightPalette: ThemePalette = {
   brandSoft: '#FEF3C7',
   brandForeground: '#FFFFFF',
   focusRing: '#F59E0B',
+  link: '#9A3412',
   background: '#FAF8F5',
   surface: '#FFFFFF',
   surfaceMuted: '#F3EFEA',
   surfaceElevated: '#FFFFFF',
   surfaceHover: '#EFE9E1',
   textPrimary: '#1C1917',
-  textSecondary: '#78716C',
+  textSecondary: '#57534E',
   textMuted: '#A8A29E',
   border: '#E7E5E4',
   borderStrong: '#D6D3D1',
   status: {
     successBg: '#ECFDF5',
+    successBorder: '#A7F3D0',
     successText: '#047857',
     warningBg: '#FFFBEB',
+    warningBorder: '#FDE68A',
     warningText: '#B45309',
     errorBg: '#FEF2F2',
+    errorBorder: '#FECACA',
     errorText: '#B91C1C',
     infoBg: '#EFF6FF',
+    infoBorder: '#BFDBFE',
     infoText: '#1D4ED8',
   },
 };
@@ -63,6 +73,7 @@ export const darkPalette: ThemePalette = {
   brandSoft: '#291E0A',
   brandForeground: '#1C1917',
   focusRing: '#FBBF24',
+  link: '#FDBA74',
   background: '#121110',
   surface: '#1C1A18',
   surfaceMuted: '#242220',
@@ -75,12 +86,16 @@ export const darkPalette: ThemePalette = {
   borderStrong: '#57534E',
   status: {
     successBg: '#064E3B',
+    successBorder: '#047857',
     successText: '#6EE7B7',
     warningBg: '#78350F',
+    warningBorder: '#B45309',
     warningText: '#FCD34D',
     errorBg: '#7F1D1D',
+    errorBorder: '#991B1B',
     errorText: '#FCA5A5',
     infoBg: '#1E3A8A',
+    infoBorder: '#1D4ED8',
     infoText: '#93C5FD',
   },
 };
@@ -90,7 +105,7 @@ export const colors = {
   primary: { DEFAULT: '#D97706', pressed: '#B45309', foreground: '#FFFFFF' },
   danger: { DEFAULT: '#B91C1C', pressed: '#991B1B', foreground: '#FFFFFF' },
   surface: { DEFAULT: '#FFFFFF', muted: '#F3EFEA', pressed: '#EFE9E1' },
-  content: { DEFAULT: '#1C1917', muted: '#78716C', inverse: '#FFFFFF' },
+  content: { DEFAULT: '#1C1917', muted: '#57534E', inverse: '#FFFFFF' },
   border: { DEFAULT: '#E7E5E4' },
 } as const;
 

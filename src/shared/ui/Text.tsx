@@ -19,10 +19,12 @@ export type TextTone =
   | 'secondary'
   | 'muted'
   | 'brand'
+  | 'link'
   | 'inverse'
   | 'danger'
   | 'success'
-  | 'warning';
+  | 'warning'
+  | 'info';
 
 export type TextProps = {
   readonly children: ReactNode;
@@ -50,10 +52,12 @@ export function Text({
     secondary: palette.textSecondary,
     muted: palette.textMuted,
     brand: palette.brand,
+    link: palette.link,
     inverse: palette.brandForeground,
     danger: palette.status.errorText,
     success: palette.status.successText,
     warning: palette.status.warningText,
+    info: palette.status.infoText,
   };
 
   return (

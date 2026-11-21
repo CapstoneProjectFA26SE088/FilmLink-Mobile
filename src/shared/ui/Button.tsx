@@ -4,9 +4,9 @@ import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
 const sizeClass = {
-  sm: 'min-h-9 h-9 px-3 py-1.5 rounded-lg',
-  md: 'min-h-11 h-11 px-4 py-2 rounded-xl',
-  lg: 'min-h-12 h-12 px-5 py-2.5 rounded-xl',
+  sm: 'min-h-9 h-9 px-3 py-1.5 rounded',
+  md: 'min-h-11 h-11 px-4 py-2 rounded',
+  lg: 'min-h-12 h-12 px-5 py-2.5 rounded',
 } as const;
 
 const labelSizeClass = {
@@ -15,7 +15,7 @@ const labelSizeClass = {
   lg: 'text-base font-semibold',
 } as const;
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'link';
 export type ButtonSize = keyof typeof sizeClass;
 
 export type ButtonProps = {
@@ -72,6 +72,11 @@ export function Button({
       bg: 'transparent',
       border: 'transparent',
       text: palette.brand,
+    },
+    link: {
+      bg: 'transparent',
+      border: 'transparent',
+      text: palette.link,
     },
   };
 
