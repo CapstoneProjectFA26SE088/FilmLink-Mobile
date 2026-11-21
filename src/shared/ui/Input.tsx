@@ -14,6 +14,9 @@ import { Text } from './Text';
 
 export type InputProps = {
   readonly label?: string;
+  readonly required?: boolean;
+  readonly helperText?: string;
+  readonly prefixLabel?: string;
   readonly value: string;
   readonly onChangeText: (text: string) => void;
   readonly placeholder?: string;
@@ -52,8 +55,68 @@ function buildContainerStyle(
   };
 }
 
+function InputLabelRow({
+  label,
+  required,
+  helperText,
+}: {
+  readonly label?: string;
+  readonly required?: boolean;
+  readonly helperText?: string;
+}) {
+  if (!label && !helperText) {
+    return null;
+  }
+  return (
+    <View className="flex-row items-baseline justify-between gap-2">
+      {label ? (
+        <Text variant="caption" tone="default">
+          {label}
+          {required ? (
+            <Text variant="caption" tone="brand">
+              {' *'}
+            </Text>
+          ) : null}
+        </Text>
+      ) : (
+        <View />
+      )}
+      {helperText ? (
+        <Text variant="caption" tone="secondary" className="font-normal">
+          {helperText}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function InputPrefix({
+  prefixLabel,
+  borderColor,
+}: {
+  readonly prefixLabel?: string;
+  readonly borderColor: string;
+}) {
+  if (!prefixLabel) {
+    return null;
+  }
+  return (
+    <View
+      className="mr-2.5 flex-row items-center border-r pr-2.5"
+      style={{ borderRightColor: borderColor }}
+    >
+      <Text variant="caption" tone="default">
+        {prefixLabel}
+      </Text>
+    </View>
+  );
+}
+
 export function Input({
   label,
+  required = false,
+  helperText,
+  prefixLabel,
   value,
   onChangeText,
   placeholder,
@@ -77,11 +140,7 @@ export function Input({
 
   return (
     <View className={cn('gap-2', className)}>
-      {label ? (
-        <Text variant="caption" tone="default">
-          {label}
-        </Text>
-      ) : null}
+      <InputLabelRow label={label} required={required} helperText={helperText} />
       <View
         className={cn(
           'flex-row rounded border px-3',
@@ -90,6 +149,7 @@ export function Input({
         style={buildContainerStyle(palette.surface, borderColor, multiline)}
       >
         {icon ? <View className="mr-2.5">{icon}</View> : null}
+        <InputPrefix prefixLabel={prefixLabel} borderColor={palette.borderStrong} />
         <TextInput
           testID={testID}
           value={value}

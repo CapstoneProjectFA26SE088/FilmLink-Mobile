@@ -8,12 +8,20 @@ export type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' |
 export type BadgeProps = {
   readonly label: string;
   readonly tone?: BadgeTone;
+  readonly dot?: boolean;
   readonly icon?: ReactNode;
   readonly testID?: string;
   readonly className?: string;
 };
 
-export function Badge({ label, tone = 'neutral', icon, testID, className }: BadgeProps) {
+export function Badge({
+  label,
+  tone = 'neutral',
+  dot = false,
+  icon,
+  testID,
+  className,
+}: BadgeProps) {
   const { palette } = useTheme();
 
   const toneMap: Record<
@@ -28,7 +36,7 @@ export function Badge({ label, tone = 'neutral', icon, testID, className }: Badg
     brand: {
       bg: palette.brandSoft,
       border: palette.brand,
-      text: palette.brand,
+      text: palette.link,
     },
     success: {
       bg: palette.status.successBg,
@@ -63,6 +71,9 @@ export function Badge({ label, tone = 'neutral', icon, testID, className }: Badg
       )}
       style={{ backgroundColor: visual.bg, borderColor: visual.border }}
     >
+      {dot ? (
+        <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: palette.brand }} />
+      ) : null}
       {icon}
       <NativeText className="text-xs font-semibold tracking-wide" style={{ color: visual.text }}>
         {label}

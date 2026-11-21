@@ -111,7 +111,7 @@ export function LoginScreen() {
         <VStack gap="sm" align="center">
           <BrandMark testID="auth.login.brand-mark" />
           <Text variant="caption" tone="link" className="mt-1 tracking-widest">
-            FILMLINK ANALOG
+            FILMLINK
           </Text>
           <Text variant="title" accessibilityRole="header" className="text-center">
             Đăng nhập tài khoản

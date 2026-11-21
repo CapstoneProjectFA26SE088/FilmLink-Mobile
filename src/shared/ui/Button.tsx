@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Text as NativeText, Pressable } from 'react-native';
+import { ActivityIndicator, Text as NativeText, Pressable, type ViewStyle } from 'react-native';
 import { cn } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 
@@ -25,10 +25,35 @@ export type ButtonProps = {
   readonly variant?: ButtonVariant;
   readonly size?: ButtonSize;
   readonly icon?: ReactNode;
+  readonly trailingIcon?: ReactNode;
+  readonly elevated?: boolean;
+  readonly underline?: boolean;
   readonly disabled?: boolean;
   readonly loading?: boolean;
   readonly className?: string;
 };
+
+type ButtonVisual = { readonly bg: string; readonly border: string; readonly text: string };
+
+function buildButtonStyle(
+  visual: ButtonVisual,
+  elevated: boolean,
+  brandShadowColor: string,
+): ViewStyle {
+  if (!elevated) {
+    return { backgroundColor: visual.bg, borderColor: visual.border };
+  }
+  return {
+    backgroundColor: visual.bg,
+    borderColor: visual.border,
+    minHeight: 50,
+    shadowColor: brandShadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
+  };
+}
 
 export function Button({
   label,
@@ -37,6 +62,9 @@ export function Button({
   variant = 'primary',
   size = 'md',
   icon,
+  trailingIcon,
+  elevated = false,
+  underline = false,
   disabled = false,
   loading = false,
   className,
@@ -97,16 +125,17 @@ export function Button({
         isDisabled && 'opacity-50',
         className,
       )}
-      style={{
-        backgroundColor: visual.bg,
-        borderColor: visual.border,
-      }}
+      style={buildButtonStyle(visual, elevated, palette.brand)}
     >
       {loading ? <ActivityIndicator size="small" color={visual.text} /> : null}
       {!loading && icon ? icon : null}
-      <NativeText className={labelSizeClass[size]} style={{ color: visual.text }}>
+      <NativeText
+        className={cn(labelSizeClass[size], underline && 'underline')}
+        style={{ color: visual.text }}
+      >
         {label}
       </NativeText>
+      {!loading && trailingIcon ? trailingIcon : null}
     </Pressable>
   );
 }

@@ -3,8 +3,57 @@ import { useState } from 'react';
 import { filmLinkApi } from '@/shared/api';
 import { OtpPurpose, validateRegistrationForm } from '@/shared/domain';
 import { getFieldErrors } from '@/shared/lib';
-import { Badge, Button, Card, HStack, Input, Screen, Text, VStack } from '@/shared/ui';
+import {
+  Alert,
+  Badge,
+  BrandMark,
+  Button,
+  Card,
+  Checkbox,
+  Divider,
+  HStack,
+  Icon,
+  IconButton,
+  Input,
+  Screen,
+  Text,
+  VStack,
+} from '@/shared/ui';
 import { mapAuthErrorMessage } from '../model/auth';
+
+const SOCIAL_REGISTER_NOTICE: Record<'google' | 'apple', string> = {
+  google: 'Đăng ký nhanh bằng Google sẽ sớm được hỗ trợ. Vui lòng tạo tài khoản bằng email.',
+  apple: 'Đăng ký nhanh bằng Apple sẽ sớm được hỗ trợ. Vui lòng tạo tài khoản bằng email.',
+};
+
+function RegisterBrandHeader() {
+  return (
+    <VStack gap="md" align="center" className="w-full">
+      <HStack align="center" justify="between" className="w-full">
+        <IconButton
+          testID="auth.register.top-back"
+          icon="chevron-back"
+          accessibilityLabel="Quay lại"
+          onPress={() => router.back()}
+        />
+        <HStack className="h-11 w-11">{null}</HStack>
+      </HStack>
+
+      <VStack gap="sm" align="center">
+        <BrandMark testID="auth.register.brand-mark" variant="tile" />
+        <Text variant="title" accessibilityRole="header" className="text-center">
+          Tạo tài khoản mới
+        </Text>
+        <Text variant="secondary" tone="secondary" className="text-center font-normal">
+          {'Tham gia cộng đồng và dịch vụ tráng ảnh '}
+          <Text variant="secondary" tone="link" className="font-semibold">
+            FilmLink
+          </Text>
+        </Text>
+      </VStack>
+    </VStack>
+  );
+}
 
 export function RegisterScreen() {
   const [fullName, setFullName] = useState('');
@@ -13,11 +62,17 @@ export function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const clearFieldError = (field: string) => {
+  const clearFeedback = () => {
     setError(null);
+    setNotice(null);
+  };
+
+  const clearFieldError = (field: string) => {
+    clearFeedback();
     setFieldErrors((prev) => {
       if (!(field in prev)) {
         return prev;
@@ -31,11 +86,12 @@ export function RegisterScreen() {
   const handleRegister = async () => {
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
-    const trimmedPhone = phoneNumber.trim();
+    const normalizedPhone = phoneNumber.replace(/\s+/g, '');
+    setNotice(null);
     const validationError = validateRegistrationForm({
       fullName: trimmedName,
       email: trimmedEmail,
-      phoneNumber: trimmedPhone || undefined,
+      phoneNumber: normalizedPhone || undefined,
       password,
       acceptedTerms,
     });
@@ -52,7 +108,7 @@ export function RegisterScreen() {
         email: trimmedEmail,
         password,
         fullName: trimmedName,
-        phoneNumber: trimmedPhone || undefined,
+        phoneNumber: normalizedPhone || undefined,
         termsAccepted: true,
       });
       router.push({
@@ -71,24 +127,26 @@ export function RegisterScreen() {
     }
   };
 
+  const handleSocialRegister = (provider: 'google' | 'apple') => {
+    setError(null);
+    setNotice(SOCIAL_REGISTER_NOTICE[provider]);
+  };
+
   return (
     <Screen testID="auth.register.screen" scroll centerContent>
-      <VStack gap="md" className="w-full max-w-sm self-center">
-        <VStack gap="xs" align="center">
-          <Badge label="ĐĂNG KÝ NHIẾP ẢNH GIA" tone="brand" />
-          <Text variant="title" accessibilityRole="header" className="text-center">
-            Tạo tài khoản mới
-          </Text>
-          <Text variant="secondary" tone="muted" className="text-center">
-            Tham gia cộng đồng và dịch vụ tráng scan FilmLink
-          </Text>
-        </VStack>
+      <VStack gap="lg" className="w-full max-w-sm self-center">
+        <RegisterBrandHeader />
 
         <Card className="w-full">
-          <VStack gap="sm">
+          <VStack gap="md">
+            {error ? <Alert testID="auth.register.error" tone="danger" message={error} /> : null}
+            {notice ? <Alert testID="auth.register.notice" tone="info" message={notice} /> : null}
+
             <Input
               testID="auth.register.name"
-              label="Họ và tên (2–100 ký tự)"
+              label="Họ và tên"
+              required
+              helperText="(2–100 ký tự)"
               value={fullName}
               onChangeText={(text) => {
                 clearFieldError('fullName');
@@ -96,10 +154,13 @@ export function RegisterScreen() {
               }}
               error={fieldErrors.fullName}
               placeholder="Minh Khôi Analog"
+              icon={<Icon name="person-outline" size="sm" tone="secondary" />}
             />
             <Input
               testID="auth.register.email"
               label="Email"
+              required
+              helperText="Dùng nhận ảnh tráng scan"
               value={email}
               onChangeText={(text) => {
                 clearFieldError('email');
@@ -109,10 +170,13 @@ export function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               placeholder="name@filmlink.vn"
+              icon={<Icon name="mail-outline" size="sm" tone="secondary" />}
             />
             <Input
               testID="auth.register.phone"
-              label="Số điện thoại (tùy chọn, 10–12 số)"
+              label="Số điện thoại"
+              helperText="(tùy chọn, 10–12 số)"
+              prefixLabel="VN +84"
               value={phoneNumber}
               onChangeText={(text) => {
                 clearFieldError('phoneNumber');
@@ -120,11 +184,13 @@ export function RegisterScreen() {
               }}
               error={fieldErrors.phoneNumber}
               keyboardType="phone-pad"
-              placeholder="0908123456"
+              placeholder="0908 123 456"
             />
             <Input
               testID="auth.register.password"
-              label="Mật khẩu (chữ + số, >= 8 ký tự)"
+              label="Mật khẩu"
+              required
+              helperText="(chữ + số, ≥ 8 ký tự)"
               value={password}
               onChangeText={(text) => {
                 clearFieldError('password');
@@ -133,35 +199,79 @@ export function RegisterScreen() {
               error={fieldErrors.password}
               secureTextEntry
               autoCapitalize="none"
+              placeholder="Tối thiểu 8 ký tự"
+              icon={<Icon name="lock-closed-outline" size="sm" tone="secondary" />}
             />
-            <Button
+
+            <Checkbox
               testID="auth.register.terms"
-              label={acceptedTerms ? '✓ Đã đồng ý Điều khoản FilmLink' : 'Chưa đồng ý Điều khoản'}
-              variant={acceptedTerms ? 'secondary' : 'outline'}
-              size="sm"
-              onPress={() => setAcceptedTerms((prev) => !prev)}
-            />
-            {error ? (
-              <Text variant="caption" tone="danger">
-                {error}
+              checked={acceptedTerms}
+              onToggle={() => {
+                clearFeedback();
+                setAcceptedTerms((prev) => !prev);
+              }}
+              accessibilityLabel="Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật của FilmLink"
+            >
+              <Text variant="secondary" tone="secondary" className="font-normal leading-5">
+                {'Tôi đồng ý với '}
+                <Text variant="secondary" tone="link" className="underline">
+                  Điều khoản dịch vụ
+                </Text>
+                {' và '}
+                <Text variant="secondary" tone="link" className="underline">
+                  Chính sách bảo mật
+                </Text>
+                {' của FilmLink'}
               </Text>
-            ) : null}
+            </Checkbox>
+
             <Button
               testID="auth.register.submit"
               label={loading ? 'Đang tạo tài khoản...' : 'Tiếp tục xác thực OTP'}
               variant="primary"
-              disabled={loading}
+              size="lg"
+              elevated
+              loading={loading}
+              trailingIcon={<Icon name="arrow-forward" size="sm" tone="inverse" />}
               onPress={() => void handleRegister()}
             />
+
+            <Divider label="HOẶC ĐĂNG KÝ NHANH" />
+
+            <HStack gap="sm">
+              <Button
+                testID="auth.register.google"
+                label="Google"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                icon={<Icon name="logo-google" size="sm" tone="default" />}
+                onPress={() => handleSocialRegister('google')}
+              />
+              <Button
+                testID="auth.register.apple"
+                label="Apple"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                icon={<Icon name="logo-apple" size="sm" tone="default" />}
+                onPress={() => handleSocialRegister('apple')}
+              />
+            </HStack>
           </VStack>
         </Card>
 
-        <HStack gap="sm" justify="center" align="center">
+        <HStack gap="xs" justify="center" align="center">
+          <Text variant="secondary" tone="secondary" className="font-normal">
+            Đã có tài khoản?
+          </Text>
           <Button
             testID="auth.register.back"
             label="Quay lại Đăng nhập"
-            variant="ghost"
+            variant="link"
             size="sm"
+            underline
+            className="px-1"
             onPress={() => router.back()}
           />
         </HStack>
