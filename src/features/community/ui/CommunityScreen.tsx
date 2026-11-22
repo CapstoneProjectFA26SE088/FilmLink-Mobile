@@ -1,7 +1,24 @@
 import { useState } from 'react';
-import { authStore, createPhotoPost, filmLinkStore, Role } from '@/shared/domain';
+import {
+  authStore,
+  type CommunityDraft,
+  CommunityDraftSchema,
+  createPhotoPost,
+  filmLinkStore,
+  Role,
+} from '@/shared/domain';
+import { useDraftPersistence } from '@/shared/hooks';
 import { useStore } from '@/shared/lib';
-import { Button, Card, Input, Screen, SegmentedControl, Text, VStack } from '@/shared/ui';
+import {
+  Button,
+  Card,
+  DraftRecoveryBanner,
+  Input,
+  Screen,
+  SegmentedControl,
+  Text,
+  VStack,
+} from '@/shared/ui';
 import type { CommunitySection } from '../model/community';
 import {
   ExpertArticleCardSection,
@@ -9,64 +26,107 @@ import {
   PhotoPostCardSection,
 } from './CommunityCardsSection';
 
+const INITIAL_COMMUNITY_DRAFT: CommunityDraft = {
+  cameraModel: 'Olympus OM-1',
+  lensModel: 'Zuiko 50mm f/1.4',
+  filmStock: 'Kodak Gold 200',
+  developedAtLab: 'Mộc Film Lab',
+  caption: 'Chiều hoàng hôn bên bến Bạch Đằng, đo sáng trung bình giữ màu nắng vàng ấm áp.',
+};
+
+function isCommunityDraftEmpty(draft: CommunityDraft): boolean {
+  const matchesInitial =
+    draft.cameraModel === INITIAL_COMMUNITY_DRAFT.cameraModel &&
+    draft.lensModel === INITIAL_COMMUNITY_DRAFT.lensModel &&
+    draft.filmStock === INITIAL_COMMUNITY_DRAFT.filmStock &&
+    draft.developedAtLab === INITIAL_COMMUNITY_DRAFT.developedAtLab &&
+    draft.caption === INITIAL_COMMUNITY_DRAFT.caption;
+  const allTextBlank =
+    draft.cameraModel.trim().length === 0 &&
+    draft.lensModel.trim().length === 0 &&
+    draft.filmStock.trim().length === 0 &&
+    draft.developedAtLab.trim().length === 0 &&
+    draft.caption.trim().length === 0;
+  return matchesInitial || allTextBlank;
+}
+
 function PhotoComposerCard({ onPublished }: { readonly onPublished: () => void }) {
   const user = useStore(authStore, (state) => state.user);
-  const [cameraModel, setCameraModel] = useState('Olympus OM-1');
-  const [lensModel, setLensModel] = useState('Zuiko 50mm f/1.4');
-  const [filmStock, setFilmStock] = useState('Kodak Gold 200');
-  const [developedAtLab, setDevelopedAtLab] = useState('Mộc Film Lab');
-  const [caption, setCaption] = useState(
-    'Chiều hoàng hôn bên bến Bạch Đằng, đo sáng trung bình giữ màu nắng vàng ấm áp.',
-  );
+  const {
+    draft,
+    hasRecoverableDraft,
+    pendingRetry,
+    lastErrorDetail,
+    lastSavedAt,
+    updateDraft,
+    restoreDraft,
+    clearDraft,
+  } = useDraftPersistence<CommunityDraft>({
+    flowKey: 'community_draft',
+    accountId: user?.id ?? null,
+    schema: CommunityDraftSchema,
+    initialDraft: INITIAL_COMMUNITY_DRAFT,
+    isEmpty: isCommunityDraftEmpty,
+  });
 
   const handlePublish = () => {
-    if (!caption.trim()) {
+    if (!draft.caption.trim()) {
       return;
     }
     createPhotoPost({
       authorName: user?.fullName ?? 'Minh Khôi Analog',
       authorRole: user?.role ?? Role.PHOTOGRAPHER,
-      cameraModel: cameraModel.trim() || 'Analog SLR',
-      lensModel: lensModel.trim() || '50mm f/1.8',
-      filmStock: filmStock.trim() || 'Kodak Portra 400',
-      developedAtLab: developedAtLab.trim() || 'Mộc Film Lab',
-      caption: caption.trim(),
+      cameraModel: draft.cameraModel.trim() || 'Analog SLR',
+      lensModel: draft.lensModel.trim() || '50mm f/1.8',
+      filmStock: draft.filmStock.trim() || 'Kodak Portra 400',
+      developedAtLab: draft.developedAtLab.trim() || 'Mộc Film Lab',
+      caption: draft.caption.trim(),
     });
+    void clearDraft();
     onPublished();
   };
 
   return (
     <Card tone="muted">
       <VStack gap="sm">
+        <DraftRecoveryBanner
+          testID="community.composer.draft-recovery"
+          visible={hasRecoverableDraft}
+          pendingRetry={pendingRetry}
+          lastErrorDetail={lastErrorDetail}
+          lastSavedAt={lastSavedAt}
+          onRestore={() => void restoreDraft()}
+          onDiscard={() => void clearDraft()}
+        />
         <Input
           testID="community.composer.camera"
           label="Máy ảnh"
-          value={cameraModel}
-          onChangeText={setCameraModel}
+          value={draft.cameraModel}
+          onChangeText={(cameraModel) => updateDraft((prev) => ({ ...prev, cameraModel }))}
         />
         <Input
           testID="community.composer.lens"
           label="Ống kính"
-          value={lensModel}
-          onChangeText={setLensModel}
+          value={draft.lensModel}
+          onChangeText={(lensModel) => updateDraft((prev) => ({ ...prev, lensModel }))}
         />
         <Input
           testID="community.composer.film"
           label="Loại phim"
-          value={filmStock}
-          onChangeText={setFilmStock}
+          value={draft.filmStock}
+          onChangeText={(filmStock) => updateDraft((prev) => ({ ...prev, filmStock }))}
         />
         <Input
           testID="community.composer.lab"
           label="Tráng tại Lab"
-          value={developedAtLab}
-          onChangeText={setDevelopedAtLab}
+          value={draft.developedAtLab}
+          onChangeText={(developedAtLab) => updateDraft((prev) => ({ ...prev, developedAtLab }))}
         />
         <Input
           testID="community.composer.caption"
           label="Cảm nhận & Thông số đo sáng"
-          value={caption}
-          onChangeText={setCaption}
+          value={draft.caption}
+          onChangeText={(caption) => updateDraft((prev) => ({ ...prev, caption }))}
           multiline
         />
         <Button

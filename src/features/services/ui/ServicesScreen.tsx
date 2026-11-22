@@ -11,12 +11,15 @@ import {
   type PublicServicePackage,
   SIGNED_URL_STALE_TIME_MS,
 } from '@/shared/api';
-import { formatVnd } from '@/shared/lib';
+import { authStore, type LabSelectionDraft, LabSelectionDraftSchema } from '@/shared/domain';
+import { useDraftPersistence } from '@/shared/hooks';
+import { formatVnd, useStore } from '@/shared/lib';
 import {
   Alert,
   Badge,
   Button,
   Card,
+  DraftRecoveryBanner,
   EmptyState,
   FilterChipGroup,
   HStack,
@@ -330,9 +333,48 @@ function ServicesStatusBanner({
   );
 }
 
+const INITIAL_LAB_SELECTION_DRAFT: LabSelectionDraft = {
+  activeTab: 'directory',
+  search: '',
+  processId: 'ALL',
+  formatId: 'ALL',
+  selectedLabId: null,
+};
+
+function isLabSelectionDraftEmpty(draft: LabSelectionDraft): boolean {
+  return (
+    draft.activeTab === INITIAL_LAB_SELECTION_DRAFT.activeTab &&
+    draft.search.trim().length === 0 &&
+    draft.processId === INITIAL_LAB_SELECTION_DRAFT.processId &&
+    draft.formatId === INITIAL_LAB_SELECTION_DRAFT.formatId &&
+    draft.selectedLabId === INITIAL_LAB_SELECTION_DRAFT.selectedLabId
+  );
+}
+
+function resolveActiveServiceError(
+  activeLabId: number | null,
+  labsError: unknown,
+  processesError: unknown,
+  formatsError: unknown,
+  detailError: unknown,
+): unknown {
+  return labsError ?? processesError ?? formatsError ?? (activeLabId !== null ? detailError : null);
+}
+
+function refetchErroredServiceQueries(
+  queries: readonly { readonly isError: boolean; readonly refetch: () => Promise<unknown> }[],
+): void {
+  for (const query of queries) {
+    if (query.isError) {
+      void query.refetch();
+    }
+  }
+}
+
 export function ServicesScreen() {
   const params = useLocalSearchParams<{ tab?: string; labId?: string }>();
   const paramLabId = parsePositiveId(params.labId);
+  const user = useStore(authStore, (state) => state.user);
 
   const [tabOverride, setTabOverride] = useState<'directory' | 'booking' | null>(null);
   const [selectedLabIdOverride, setSelectedLabIdOverride] = useState<number | null>(null);
@@ -340,6 +382,22 @@ export function ServicesScreen() {
   const [search, setSearch] = useState('');
   const [selectedProcessId, setSelectedProcessId] = useState<number | 'ALL'>('ALL');
   const [selectedFormatId, setSelectedFormatId] = useState<number | 'ALL'>('ALL');
+
+  const {
+    hasRecoverableDraft,
+    pendingRetry,
+    lastErrorDetail,
+    lastSavedAt,
+    updateDraft,
+    restoreDraft,
+    clearDraft,
+  } = useDraftPersistence<LabSelectionDraft>({
+    flowKey: 'services_lab_selection',
+    accountId: user?.id ?? null,
+    schema: LabSelectionDraftSchema,
+    initialDraft: INITIAL_LAB_SELECTION_DRAFT,
+    isEmpty: isLabSelectionDraftEmpty,
+  });
 
   const activeTab = tabOverride ?? (params.tab === 'booking' ? 'booking' : 'directory');
   const activeLabId = selectedLabIdOverride ?? paramLabId;
@@ -378,45 +436,81 @@ export function ServicesScreen() {
   const filteredLabs = filterPublicLabSummaries(labsQuery.data?.content ?? [], search);
   const resolvedLab = labDetailQuery.data ?? null;
   const resolvedPackage = resolveSelectedPackage(resolvedLab, selectedPackage);
-  const activeError =
-    labsQuery.error ??
-    processesQuery.error ??
-    formatsQuery.error ??
-    (activeLabId !== null ? labDetailQuery.error : null);
+  const activeError = resolveActiveServiceError(
+    activeLabId,
+    labsQuery.error,
+    processesQuery.error,
+    formatsQuery.error,
+    labDetailQuery.error,
+  );
   const isDetailLoadingForBooking =
     activeTab === 'booking' && activeLabId !== null && labDetailQuery.isLoading;
+
+  const handleTabChange = (nextTab: 'directory' | 'booking') => {
+    setTabOverride(nextTab);
+    updateDraft((prev) => ({ ...prev, activeTab: nextTab }));
+  };
 
   const handleInspectLab = (labId: number) => {
     setSelectedLabIdOverride(labId);
     setSelectedPackage(null);
+    updateDraft((prev) => ({ ...prev, selectedLabId: labId }));
   };
 
   const handleSelectPackage = (lab: PublicFilmLabResponse, pkg: PublicServicePackage) => {
     setSelectedLabIdOverride(lab.id);
     setSelectedPackage(pkg);
     setTabOverride('booking');
+    updateDraft((prev) => ({ ...prev, activeTab: 'booking', selectedLabId: lab.id }));
+  };
+
+  const handleSearchChange = (nextSearch: string) => {
+    setSearch(nextSearch);
+    updateDraft((prev) => ({ ...prev, search: nextSearch }));
+  };
+
+  const handleProcessChange = (processId: number | 'ALL') => {
+    setSelectedProcessId(processId);
+    updateDraft((prev) => ({ ...prev, processId }));
+  };
+
+  const handleFormatChange = (formatId: number | 'ALL') => {
+    setSelectedFormatId(formatId);
+    updateDraft((prev) => ({ ...prev, formatId }));
   };
 
   const handleResetFilters = () => {
     setSearch('');
     setSelectedProcessId('ALL');
     setSelectedFormatId('ALL');
+    void clearDraft();
+  };
+
+  const handleRestoreDirectoryDraft = () => {
+    const restored = restoreDraft();
+    if (!restored) {
+      return;
+    }
+    setTabOverride(restored.activeTab);
+    setSelectedLabIdOverride(restored.selectedLabId);
+    setSearch(restored.search);
+    setSelectedProcessId(restored.processId);
+    setSelectedFormatId(restored.formatId);
   };
 
   const handleRetry = () => {
-    for (const query of [labsQuery, processesQuery, formatsQuery]) {
-      if (query.isError) {
-        void query.refetch();
-      }
-    }
-    if (activeLabId !== null && labDetailQuery.isError) {
-      void labDetailQuery.refetch();
-    }
+    refetchErroredServiceQueries([
+      labsQuery,
+      processesQuery,
+      formatsQuery,
+      ...(activeLabId !== null ? [labDetailQuery] : []),
+    ]);
   };
 
   const handleOrderCreated = () => {
     setSelectedPackage(null);
     setSelectedLabIdOverride(null);
+    void clearDraft();
     router.push('/(tabs)/orders');
   };
 
@@ -437,7 +531,7 @@ export function ServicesScreen() {
             { value: 'booking', label: 'Phiếu đặt tráng scan' },
           ]}
           value={activeTab}
-          onChange={setTabOverride}
+          onChange={handleTabChange}
         />
 
         <ServicesStatusBanner
@@ -447,34 +541,45 @@ export function ServicesScreen() {
         />
 
         {activeTab === 'directory' ? (
-          <ServicesDirectorySection
-            search={search}
-            onChangeSearch={setSearch}
-            selectedProcessId={selectedProcessId}
-            onChangeProcessId={setSelectedProcessId}
-            selectedFormatId={selectedFormatId}
-            onChangeFormatId={setSelectedFormatId}
-            processOptions={buildCatalogFilterOptions(
-              'Tất cả quy trình',
-              processesQuery.data ?? [],
-            )}
-            formatOptions={buildCatalogFilterOptions('Mọi khổ phim', formatsQuery.data ?? [])}
-            filteredLabs={filteredLabs}
-            activeLabId={activeLabId}
-            labDetail={resolvedLab}
-            isLoadingLabs={labsQuery.isLoading}
-            isLoadingDetail={labDetailQuery.isLoading}
-            hasError={Boolean(activeError)}
-            selectedPackageId={resolvedPackage?.id ?? null}
-            onResetFilters={handleResetFilters}
-            onInspectLab={handleInspectLab}
-            onSelectPackage={handleSelectPackage}
-          />
+          <VStack gap="md">
+            <DraftRecoveryBanner
+              testID="services.directory.draft-recovery"
+              visible={hasRecoverableDraft && activeTab === 'directory'}
+              pendingRetry={pendingRetry}
+              lastErrorDetail={lastErrorDetail}
+              lastSavedAt={lastSavedAt}
+              onRestore={handleRestoreDirectoryDraft}
+              onDiscard={() => void clearDraft()}
+            />
+            <ServicesDirectorySection
+              search={search}
+              onChangeSearch={handleSearchChange}
+              selectedProcessId={selectedProcessId}
+              onChangeProcessId={handleProcessChange}
+              selectedFormatId={selectedFormatId}
+              onChangeFormatId={handleFormatChange}
+              processOptions={buildCatalogFilterOptions(
+                'Tất cả quy trình',
+                processesQuery.data ?? [],
+              )}
+              formatOptions={buildCatalogFilterOptions('Mọi khổ phim', formatsQuery.data ?? [])}
+              filteredLabs={filteredLabs}
+              activeLabId={activeLabId}
+              labDetail={resolvedLab}
+              isLoadingLabs={labsQuery.isLoading}
+              isLoadingDetail={labDetailQuery.isLoading}
+              hasError={Boolean(activeError)}
+              selectedPackageId={resolvedPackage?.id ?? null}
+              onResetFilters={handleResetFilters}
+              onInspectLab={handleInspectLab}
+              onSelectPackage={handleSelectPackage}
+            />
+          </VStack>
         ) : (
           <BookingWizardSection
             selectedLab={resolvedLab}
             selectedPackage={resolvedPackage}
-            onChooseLab={() => setTabOverride('directory')}
+            onChooseLab={() => handleTabChange('directory')}
             onOrderCreated={handleOrderCreated}
           />
         )}

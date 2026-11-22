@@ -31,7 +31,7 @@ export type UseDraftPersistenceResult<T> = {
   readonly lastErrorDetail: string | null;
   readonly lastSavedAt: string | null;
   readonly updateDraft: (updater: T | ((prev: T) => T)) => void;
-  readonly restoreDraft: () => void;
+  readonly restoreDraft: () => T | null;
   readonly markSubmissionFailed: (error: unknown) => Promise<void>;
   readonly clearDraft: () => Promise<void>;
   readonly flushDraft: () => Promise<void>;
@@ -193,15 +193,16 @@ export function useDraftPersistence<T>({
     [cancelPendingSave, debounceMs, persistSnapshot],
   );
 
-  const restoreDraft = useCallback(() => {
+  const restoreDraft = useCallback((): T | null => {
     const payload = recoverablePayloadRef.current;
     if (payload === null) {
-      return;
+      return null;
     }
     draftRef.current = payload;
     recoverablePayloadRef.current = null;
     setDraft(payload);
     setRecoverablePayload(null);
+    return payload;
   }, []);
 
   const markSubmissionFailed = useCallback(

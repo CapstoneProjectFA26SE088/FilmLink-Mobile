@@ -1,15 +1,21 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+  type AiAdvisorDraft,
+  AiAdvisorDraftSchema,
   type AiChatMessage,
   analyzeFilmScanQuality,
+  authStore,
   type ScanQualityAnalysis,
   SUGGESTED_PROMPTS,
 } from '@/shared/domain';
+import { useDraftPersistence } from '@/shared/hooks';
+import { useStore } from '@/shared/lib';
 import {
   Badge,
   Button,
   Card,
+  DraftRecoveryBanner,
   HStack,
   Input,
   Screen,
@@ -17,7 +23,7 @@ import {
   Text,
   VStack,
 } from '@/shared/ui';
-import { type AdvisorMode, appendAdvisoryTurn } from '../model/ai-advisor';
+import { appendAdvisoryTurn } from '../model/ai-advisor';
 
 const INITIAL_MESSAGES: readonly AiChatMessage[] = [
   {
@@ -28,21 +34,50 @@ const INITIAL_MESSAGES: readonly AiChatMessage[] = [
   },
 ];
 
+const INITIAL_AI_ADVISOR_DRAFT: AiAdvisorDraft = {
+  mode: 'chat',
+  prompt: '',
+  frameText: '12',
+};
+
+function isAiAdvisorDraftEmpty(draft: AiAdvisorDraft): boolean {
+  return (
+    draft.mode === 'chat' && draft.prompt.trim().length === 0 && draft.frameText.trim() === '12'
+  );
+}
+
 export function AiAdvisorScreen() {
-  const [mode, setMode] = useState<AdvisorMode>('chat');
-  const [prompt, setPrompt] = useState('');
+  const user = useStore(authStore, (state) => state.user);
+  const {
+    draft,
+    hasRecoverableDraft,
+    pendingRetry,
+    lastErrorDetail,
+    lastSavedAt,
+    updateDraft,
+    restoreDraft,
+    clearDraft,
+  } = useDraftPersistence<AiAdvisorDraft>({
+    flowKey: 'ai_advisor_draft',
+    accountId: user?.id ?? null,
+    schema: AiAdvisorDraftSchema,
+    initialDraft: INITIAL_AI_ADVISOR_DRAFT,
+    isEmpty: isAiAdvisorDraftEmpty,
+  });
   const [messages, setMessages] = useState<readonly AiChatMessage[]>(INITIAL_MESSAGES);
-  const [frameText, setFrameText] = useState('12');
   const [report, setReport] = useState<ScanQualityAnalysis | null>(null);
 
   const handleSend = (customPrompt?: string) => {
-    const query = customPrompt ?? prompt;
+    const query = customPrompt ?? draft.prompt;
     if (!query.trim()) {
       return;
     }
     setMessages((prev) => appendAdvisoryTurn(prev, query));
     if (!customPrompt) {
-      setPrompt('');
+      updateDraft((prev) => ({ ...prev, prompt: '' }));
+      if (draft.frameText.trim() === '12' && draft.mode === 'chat') {
+        void clearDraft();
+      }
     }
   };
 
@@ -70,11 +105,21 @@ export function AiAdvisorScreen() {
             { value: 'chat', label: 'Hỏi đáp Cẩm nang AI' },
             { value: 'diagnostics', label: 'Chẩn đoán Khung Scan' },
           ]}
-          value={mode}
-          onChange={setMode}
+          value={draft.mode}
+          onChange={(mode) => updateDraft((prev) => ({ ...prev, mode }))}
         />
 
-        {mode === 'chat' ? (
+        <DraftRecoveryBanner
+          testID="ai.chat.draft-recovery"
+          visible={hasRecoverableDraft}
+          pendingRetry={pendingRetry}
+          lastErrorDetail={lastErrorDetail}
+          lastSavedAt={lastSavedAt}
+          onRestore={() => void restoreDraft()}
+          onDiscard={() => void clearDraft()}
+        />
+
+        {draft.mode === 'chat' ? (
           <VStack gap="md">
             <VStack gap="xs">
               {SUGGESTED_PROMPTS.map((suggestion, idx) => (
@@ -104,8 +149,8 @@ export function AiAdvisorScreen() {
             <Input
               testID="ai.chat.input"
               label="Đặt câu hỏi về phim & hóa chất"
-              value={prompt}
-              onChangeText={setPrompt}
+              value={draft.prompt}
+              onChangeText={(prompt) => updateDraft((prev) => ({ ...prev, prompt }))}
               placeholder="Ví dụ: Nên tráng ECN-2 ở đâu?"
             />
             <Button
@@ -130,15 +175,15 @@ export function AiAdvisorScreen() {
               <Input
                 testID="ai.diag.frame"
                 label="Số thứ tự khung phim cần kiểm tra"
-                value={frameText}
-                onChangeText={setFrameText}
+                value={draft.frameText}
+                onChangeText={(frameText) => updateDraft((prev) => ({ ...prev, frameText }))}
                 keyboardType="numeric"
               />
               <Button
                 testID="ai.diag.run"
                 label="Phân tích chất lượng Scan"
                 variant="primary"
-                onPress={() => setReport(analyzeFilmScanQuality(Number(frameText) || 1))}
+                onPress={() => setReport(analyzeFilmScanQuality(Number(draft.frameText) || 1))}
               />
               {report ? (
                 <Card tone="success">
