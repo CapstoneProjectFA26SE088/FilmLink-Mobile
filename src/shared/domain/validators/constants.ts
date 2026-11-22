@@ -1,0 +1,16 @@
+export const OTP_MAX_ATTEMPTS_DEFAULT = 5;
+export const PUSH_PULL_FEE_PER_STOP_VND = 20_000;
+export const MIN_CONSIGNMENT_PRICE_VND = 100_000;
+export const MIN_ROLL_COUNT = 1;
+export const MAX_ROLL_COUNT = 20;
+export const MIN_PUSH_PULL_STOPS = -3;
+export const MAX_PUSH_PULL_STOPS = 3;
+export const MIN_EXPOSURE_COUNT = 1;
+export const MAX_EXPOSURE_COUNT = 40;
+export const MIN_SHOOTING_ISO = 1;
+export const MAX_SHOOTING_ISO = 12_800;
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 72;
+export const VN_PHONE_REGEX = /^(0|\+84)\d{9,10}$/;
+export const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
