@@ -83,12 +83,15 @@
         "home.open-upgrade",
         "home.open-ai",
         "home.open-expert",
+        "home.error",
+        "home.retry",
+        "home.loading",
         "home.open-orders",
         "home.open-services"
       ],
       "invariants": [
-        "Summarizes active vs completed service orders cleanly",
-        "Quick-book pre-fills bookingDraft and navigates to Services"
+        "Summarizes live active vs completed service orders from GET /orders",
+        "Quick-book routes directly to Services booking tab with selected live labId"
       ]
     },
     {
@@ -99,20 +102,35 @@
       "entry": "src/features/services/ui/ServicesScreen.tsx",
       "testIDs": [
         "services.screen",
+        "services.error",
+        "services.retry",
+        "services.loading",
         "services.search",
         "services.empty",
         "services.booking.draft-recovery",
+        "services.booking.choose-lab",
+        "services.booking.error",
         "services.booking.film-stock",
         "services.booking.rolls-dec",
         "services.booking.rolls-inc",
+        "services.booking.exposures-dec",
+        "services.booking.exposures-inc",
         "services.booking.stops-dec",
         "services.booking.stops-inc",
+        "services.booking.pickup-address",
+        "services.booking.pickup-district",
+        "services.booking.pickup-province",
+        "services.booking.pickup-phone",
+        "services.booking.pickup-start",
+        "services.booking.pickup-end",
         "services.booking.note",
+        "services.booking.quote-summary",
+        "services.booking.quote",
         "services.booking.submit"
       ],
       "invariants": [
-        "Filters verified labs by search query, chemical process, and film format",
-        "Clamps roll count to [1, 20] and push/pull stops to [-3, 3]"
+        "Filters live public labs by search query, film process, and film format",
+        "Clamps rolls [1, 20], exposures [1, 40], ISO [1, 12800], and push/pull [-3, 3] with idempotent live booking"
       ]
     },
     {
@@ -121,11 +139,16 @@
       "route": "/(tabs)/orders",
       "routeFile": "src/app/(tabs)/orders.tsx",
       "entry": "src/features/orders/ui/OrdersScreen.tsx",
-      "testIDs": ["orders.screen", "orders.empty"],
+      "testIDs": [
+        "orders.screen",
+        "orders.loading",
+        "orders.error",
+        "orders.retry",
+        "orders.empty"
+      ],
       "invariants": [
-        "BR-07: Tracks 6 sequential lab processing stages",
-        "BR-08: Exposes digital scan archive and full-res download on completed orders",
-        "BR-27 & BR-33: Validates non-empty rescan reasons and supports one review per completed order"
+        "BR-07: Tracks 6 sequential lab processing stages from live GET /orders/{id}",
+        "Handles signed handover photo refresh on 403 STORAGE_LINK_INVALID and VNPay sandbox payments"
       ]
     },
     {
