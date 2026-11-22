@@ -49,13 +49,21 @@
         "auth.otp.sms-fallback",
         "auth.otp.to-login",
         "auth.forgot.screen",
+        "auth.forgot.top-back",
+        "auth.forgot.brand-mark",
+        "auth.forgot.error",
         "auth.forgot.email",
         "auth.forgot.submit",
         "auth.forgot.back",
         "auth.reset.screen",
+        "auth.reset.top-back",
+        "auth.reset.brand-mark",
+        "auth.reset.recipient",
+        "auth.reset.error",
         "auth.reset.password",
         "auth.reset.confirm",
-        "auth.reset.submit"
+        "auth.reset.submit",
+        "auth.reset.to-login"
       ],
       "invariants": [
         "UC06: Registration enforces 2-100 char name, valid email, alphanumeric >= 8 char password, and accepted terms",

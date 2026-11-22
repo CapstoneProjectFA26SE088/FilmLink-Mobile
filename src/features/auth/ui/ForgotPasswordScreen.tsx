@@ -2,8 +2,48 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { filmLinkApi } from '@/shared/api';
 import { OtpPurpose } from '@/shared/domain';
-import { Badge, Button, Card, HStack, Input, Screen, Text, VStack } from '@/shared/ui';
+import {
+  Alert,
+  Badge,
+  BrandMark,
+  Button,
+  Card,
+  HStack,
+  Icon,
+  IconButton,
+  Input,
+  Screen,
+  Text,
+  VStack,
+} from '@/shared/ui';
 import { mapAuthErrorMessage } from '../model/auth';
+
+function ForgotPasswordHeader() {
+  return (
+    <VStack gap="md" align="center" className="w-full">
+      <HStack align="center" justify="between" className="w-full">
+        <IconButton
+          testID="auth.forgot.top-back"
+          icon="chevron-back"
+          accessibilityLabel="Quay lại"
+          onPress={() => router.back()}
+        />
+        <Badge label="KHÔI PHỤC TÀI KHOẢN" tone="brand" dot className="self-center" />
+        <HStack className="h-11 w-11">{null}</HStack>
+      </HStack>
+
+      <VStack gap="sm" align="center">
+        <BrandMark testID="auth.forgot.brand-mark" variant="tile" />
+        <Text variant="title" accessibilityRole="header" className="text-center">
+          Quên mật khẩu
+        </Text>
+        <Text variant="secondary" tone="secondary" className="text-center font-normal">
+          Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu
+        </Text>
+      </VStack>
+    </VStack>
+  );
+}
 
 export function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -33,22 +73,19 @@ export function ForgotPasswordScreen() {
 
   return (
     <Screen testID="auth.forgot.screen" scroll centerContent>
-      <VStack gap="md" className="w-full max-w-sm self-center">
-        <VStack gap="xs" align="center">
-          <Badge label="KHÔI PHỤC TÀI KHOẢN" tone="brand" />
-          <Text variant="title" accessibilityRole="header" className="text-center">
-            Quên mật khẩu
-          </Text>
-          <Text variant="secondary" tone="muted" className="text-center">
-            Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu
-          </Text>
-        </VStack>
+      <VStack gap="lg" className="w-full max-w-sm self-center">
+        <ForgotPasswordHeader />
 
         <Card className="w-full">
-          <VStack gap="sm">
+          <VStack gap="md">
+            {error ? <Alert testID="auth.forgot.error" tone="danger" message={error} /> : null}
+
             <Input
               testID="auth.forgot.email"
               label="Email đã đăng ký"
+              required
+              helperText="Email nhận mã OTP"
+              icon={<Icon name="mail-outline" size="sm" tone="muted" />}
               value={email}
               onChangeText={(text) => {
                 setError(null);
@@ -58,27 +95,32 @@ export function ForgotPasswordScreen() {
               autoCapitalize="none"
               placeholder="name@filmlink.vn"
             />
-            {error ? (
-              <Text variant="caption" tone="danger">
-                {error}
-              </Text>
-            ) : null}
+
             <Button
               testID="auth.forgot.submit"
               label={loading ? 'Đang gửi mã...' : 'Gửi mã xác thực OTP'}
               variant="primary"
+              size="lg"
+              elevated
+              loading={loading}
               disabled={loading}
+              trailingIcon={<Icon name="arrow-forward" size="sm" tone="inverse" />}
               onPress={() => void handleSubmit()}
             />
           </VStack>
         </Card>
 
-        <HStack gap="sm" justify="center" align="center">
+        <HStack gap="xs" justify="center" align="center">
+          <Text variant="caption" tone="secondary">
+            Nhớ lại mật khẩu?
+          </Text>
           <Button
             testID="auth.forgot.back"
             label="Quay lại Đăng nhập"
-            variant="ghost"
+            variant="link"
             size="sm"
+            underline
+            className="px-1"
             onPress={() => router.back()}
           />
         </HStack>

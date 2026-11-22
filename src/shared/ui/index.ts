@@ -1,6 +1,5 @@
 export { AiTabButton, type AiTabButtonProps } from './AiTabButton';
 export { Alert, type AlertProps, type AlertTone } from './Alert';
-export { AppHeader, type AppHeaderProps } from './AppHeader';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { BrandMark, type BrandMarkProps, type BrandMarkVariant } from './BrandMark';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';

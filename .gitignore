@@ -43,6 +43,7 @@ yarn-error.*
 # verification & test outputs
 coverage/
 reports/
+graphify-out/
 
 .agents/
 scripts/
