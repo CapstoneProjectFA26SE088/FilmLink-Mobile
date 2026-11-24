@@ -182,7 +182,7 @@ export function OrdersScreen() {
   });
 
   const ordersQuery = useInfiniteQuery({
-    queryKey: filmLinkQueryKeys.orders.list({ size: 20 }),
+    queryKey: filmLinkQueryKeys.orders.infinite({ size: 20 }),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => filmLinkApi.fetchServiceOrders({ page: pageParam, size: 20 }),
     getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),
@@ -191,7 +191,7 @@ export function OrdersScreen() {
   });
 
   const archiveQuery = useInfiniteQuery({
-    queryKey: filmLinkQueryKeys.archive.list({ size: 20 }),
+    queryKey: filmLinkQueryKeys.archive.infinite({ size: 20 }),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => filmLinkApi.fetchFilmArchive({ page: pageParam, size: 20 }),
     getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.page + 1 : undefined),

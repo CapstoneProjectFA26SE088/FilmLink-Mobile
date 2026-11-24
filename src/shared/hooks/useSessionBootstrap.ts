@@ -1,9 +1,11 @@
+import { type QueryClient, QueryClientContext } from '@tanstack/react-query';
 import { router, useRootNavigationState, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import {
   type AuthSession,
   filmLinkApi,
   isSupportedMobileRole,
+  purgePrivateQueryCache,
   sessionManager,
   type UserAccountResponse,
 } from '@/shared/api';
@@ -45,12 +47,16 @@ export type SessionBootstrapState = {
   readonly isAuthenticated: boolean;
 };
 
-async function hydrateStoredSession(isActive: () => boolean): Promise<void> {
+async function hydrateStoredSession(
+  isActive: () => boolean,
+  queryClient: QueryClient | undefined,
+): Promise<void> {
   const session = await sessionManager.hydrate().catch(() => null);
   if (!isActive()) {
     return;
   }
   if (!session) {
+    purgePrivateQueryCache(queryClient);
     setAuthUser(null);
     setAuthHydrated(true);
     return;
@@ -58,6 +64,7 @@ async function hydrateStoredSession(isActive: () => boolean): Promise<void> {
   if (!isSupportedMobileRole(session.role)) {
     await sessionManager.endSession('unsupported-role');
     if (isActive()) {
+      purgePrivateQueryCache(queryClient);
       setAuthUser(null);
       setAuthHydrated(true);
     }
@@ -71,7 +78,34 @@ async function hydrateStoredSession(isActive: () => boolean): Promise<void> {
   }
 }
 
+function applySessionChange(
+  session: AuthSession | null,
+  queryClient: QueryClient | undefined,
+): void {
+  if (!session) {
+    purgePrivateQueryCache(queryClient);
+    setAuthUser(null);
+    return;
+  }
+  if (!isSupportedMobileRole(session.role)) {
+    void sessionManager.endSession('unsupported-role');
+    purgePrivateQueryCache(queryClient);
+    setAuthUser(null);
+    return;
+  }
+  const currentUser = authStore.getState().user;
+  if (currentUser && currentUser.id !== String(session.accountId)) {
+    purgePrivateQueryCache(queryClient);
+    setAuthUser(sessionToUserAccount(session));
+    return;
+  }
+  if (!currentUser) {
+    setAuthUser(sessionToUserAccount(session));
+  }
+}
+
 export function useSessionBootstrap(): SessionBootstrapState {
+  const queryClient = useContext(QueryClientContext);
   const isHydrated = useStore(authStore, (state) => state.isHydrated);
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
   const segments = useSegments();
@@ -85,27 +119,16 @@ export function useSessionBootstrap(): SessionBootstrapState {
       if (!active) {
         return;
       }
-      if (!session) {
-        setAuthUser(null);
-        return;
-      }
-      if (!isSupportedMobileRole(session.role)) {
-        void sessionManager.endSession('unsupported-role');
-        setAuthUser(null);
-        return;
-      }
-      if (!authStore.getState().user) {
-        setAuthUser(sessionToUserAccount(session));
-      }
+      applySessionChange(session, queryClient);
     });
 
-    void hydrateStoredSession(() => active);
+    void hydrateStoredSession(() => active, queryClient);
 
     return () => {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!isHydrated || !isNavReady) {

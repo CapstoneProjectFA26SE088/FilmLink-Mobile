@@ -20,7 +20,13 @@ export {
   ResponseShapeError,
   type TokenProvider,
 } from './http';
-export { createQueryClient, DEFAULT_GC_TIME_MS, shouldRetryQuery } from './query-client';
+export {
+  createQueryClient,
+  DEFAULT_GC_TIME_MS,
+  PRIVATE_QUERY_ROOTS,
+  purgePrivateQueryCache,
+  shouldRetryQuery,
+} from './query-client';
 export {
   CATALOG_STALE_TIME_MS,
   filmLinkQueryKeys,

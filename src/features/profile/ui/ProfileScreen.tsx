@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { filmLinkApi, sessionManager } from '@/shared/api';
+import { filmLinkApi, filmLinkQueryKeys, ORDER_STALE_TIME_MS, sessionManager } from '@/shared/api';
 import {
   authStore,
   checkRoleCapabilities,
@@ -32,9 +32,9 @@ export function ProfileScreen() {
   const user = useStore(authStore, (state) => state.user);
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
   const { data: accountProfile } = useQuery({
-    queryKey: ['accounts', 'me'],
+    queryKey: filmLinkQueryKeys.accounts.me(),
     queryFn: filmLinkApi.getMyAccount,
-    staleTime: 30_000,
+    staleTime: ORDER_STALE_TIME_MS,
     enabled: isAuthenticated,
   });
 

@@ -17,6 +17,8 @@ export const filmLinkQueryKeys = {
   archive: {
     all: ['archive'] as const,
     list: (params?: SearchFilmArchiveParams) => ['archive', 'list', params ?? {}] as const,
+    infinite: (params?: Omit<SearchFilmArchiveParams, 'page'>) =>
+      ['archive', 'infinite', params ?? {}] as const,
     roll: (archiveRollId: number) => ['archive', 'roll', archiveRollId] as const,
   },
   catalogs: {
@@ -39,6 +41,8 @@ export const filmLinkQueryKeys = {
   orders: {
     all: ['orders'] as const,
     list: (params?: ServiceOrderListParams) => ['orders', 'list', params ?? {}] as const,
+    infinite: (params?: Omit<ServiceOrderListParams, 'page'>) =>
+      ['orders', 'infinite', params ?? {}] as const,
     detail: (orderId: number) => ['orders', 'detail', orderId] as const,
   },
 } as const;
