@@ -6,7 +6,12 @@ import {
   type UserAccount,
   validatePasswordComplexity,
 } from '@/shared/domain';
-import { getErrorMessage, hasErrorCode, isNetworkError } from '@/shared/lib';
+import {
+  getErrorMessage,
+  hasErrorCode,
+  isNetworkError,
+  normalizeProblemDetail,
+} from '@/shared/lib';
 
 export const OTP_EXPIRY_SECONDS = 300;
 
@@ -68,7 +73,10 @@ export function mapAuthErrorMessage(error: unknown): string {
     return 'Tài khoản chưa được kích hoạt qua mã OTP.';
   }
   if (hasErrorCode(error, ErrorCode.ACCOUNT_LOCKED)) {
-    return 'Tài khoản của bạn đã bị khóa bởi Quản trị viên.';
+    const { lockReason } = normalizeProblemDetail(error);
+    return lockReason
+      ? `Tài khoản của bạn đã bị khóa bởi Quản trị viên: ${lockReason}`
+      : 'Tài khoản của bạn đã bị khóa bởi Quản trị viên.';
   }
   if (hasErrorCode(error, ErrorCode.ACCOUNT_TEMPORARILY_LOCKED)) {
     return 'Tài khoản bị tạm khóa 15 phút do nhập sai quá 5 lần (MSG10).';

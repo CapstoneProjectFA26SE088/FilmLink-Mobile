@@ -1,17 +1,23 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
+  type AskChatbotQuestionRequest,
+  filmLinkApi,
+  filmLinkQueryKeys,
+  ORDER_STALE_TIME_MS,
+} from '@/shared/api';
+import {
   type AiAdvisorDraft,
   AiAdvisorDraftSchema,
-  type AiChatMessage,
-  analyzeFilmScanQuality,
   authStore,
-  type ScanQualityAnalysis,
+  ErrorCode,
   SUGGESTED_PROMPTS,
 } from '@/shared/domain';
 import { useDraftPersistence } from '@/shared/hooks';
-import { useStore } from '@/shared/lib';
+import { hasErrorCode, useStore } from '@/shared/lib';
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -19,35 +25,60 @@ import {
   HStack,
   Input,
   Screen,
-  SegmentedControl,
   Text,
   VStack,
 } from '@/shared/ui';
-import { appendAdvisoryTurn } from '../model/ai-advisor';
-
-const INITIAL_MESSAGES: readonly AiChatMessage[] = [
-  {
-    id: 'AI-WELCOME',
-    sender: 'AI',
-    text: 'Xin chào! Tôi là Trợ lý AI FilmLink được huấn luyện từ Cẩm nang Chuyên gia (Knowledge Base). Bạn cần tư vấn thông số đo sáng hay kiểm tra lỗi khung phim?',
-    timestamp: '2026-11-01T00:00:00Z',
-  },
-];
+import {
+  buildDisplayMessages,
+  buildLiveChatbotTurn,
+  type ChatbotDisplayMessage,
+  type LiveChatbotTurn,
+  mapChatbotApiError,
+  validateChatbotQuestion,
+} from '../model/ai-advisor';
 
 const INITIAL_AI_ADVISOR_DRAFT: AiAdvisorDraft = {
-  mode: 'chat',
+  sessionId: null,
   prompt: '',
-  frameText: '12',
 };
 
 function isAiAdvisorDraftEmpty(draft: AiAdvisorDraft): boolean {
+  return draft.sessionId === null && draft.prompt.trim().length === 0;
+}
+
+function MessageBubbleCard({ message }: { readonly message: ChatbotDisplayMessage }) {
+  const isAssistant = message.sender === 'ASSISTANT';
   return (
-    draft.mode === 'chat' && draft.prompt.trim().length === 0 && draft.frameText.trim() === '12'
+    <Card tone={isAssistant ? 'brand' : 'default'}>
+      <VStack gap="xs">
+        <HStack justify="between" align="center">
+          <Badge
+            label={isAssistant ? 'FilmLink AI' : 'Bạn'}
+            tone={isAssistant ? 'brand' : 'neutral'}
+          />
+          {message.fallback ? <Badge label="Ngoài Cẩm nang" tone="warning" /> : null}
+        </HStack>
+        <Text variant="secondary">{message.content}</Text>
+        {message.citations.length > 0 ? (
+          <HStack gap="xs" className="flex-wrap">
+            {message.citations.map((citation) => (
+              <Badge
+                key={citation.articleId}
+                label={`Cẩm nang #${citation.articleId}: ${citation.title}`}
+                tone="info"
+              />
+            ))}
+          </HStack>
+        ) : null}
+      </VStack>
+    </Card>
   );
 }
 
 export function AiAdvisorScreen() {
+  const queryClient = useQueryClient();
   const user = useStore(authStore, (state) => state.user);
+  const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
   const {
     draft,
     hasRecoverableDraft,
@@ -56,6 +87,7 @@ export function AiAdvisorScreen() {
     lastSavedAt,
     updateDraft,
     restoreDraft,
+    markSubmissionFailed,
     clearDraft,
   } = useDraftPersistence<AiAdvisorDraft>({
     flowKey: 'ai_advisor_draft',
@@ -64,19 +96,75 @@ export function AiAdvisorScreen() {
     initialDraft: INITIAL_AI_ADVISOR_DRAFT,
     isEmpty: isAiAdvisorDraftEmpty,
   });
-  const [messages, setMessages] = useState<readonly AiChatMessage[]>(INITIAL_MESSAGES);
-  const [report, setReport] = useState<ScanQualityAnalysis | null>(null);
 
-  const handleSend = (customPrompt?: string) => {
-    const query = customPrompt ?? draft.prompt;
-    if (!query.trim()) {
+  const [liveTurns, setLiveTurns] = useState<readonly LiveChatbotTurn[]>([]);
+  const [latestFallback, setLatestFallback] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const activeSessionId = draft.sessionId;
+  const messagesQuery = useQuery({
+    queryKey: filmLinkQueryKeys.chatbot.messages(activeSessionId ?? 0, { size: 100 }),
+    queryFn: () => filmLinkApi.fetchChatbotSessionMessages(activeSessionId ?? 0, { size: 100 }),
+    enabled: isAuthenticated && activeSessionId !== null,
+    staleTime: ORDER_STALE_TIME_MS,
+  });
+
+  const askMutation = useMutation({
+    mutationFn: (payload: AskChatbotQuestionRequest) => filmLinkApi.askChatbotQuestion(payload),
+  });
+
+  const displayMessages = buildDisplayMessages(
+    messagesQuery.data?.content,
+    liveTurns,
+    activeSessionId,
+    latestFallback,
+  );
+  const hasFallbackNotice = latestFallback || displayMessages.some((msg) => msg.fallback);
+  const queryError = messagesQuery.isError ? mapChatbotApiError(messagesQuery.error) : null;
+  const submitError = askMutation.isError ? mapChatbotApiError(askMutation.error) : null;
+  const displayedError = validationError ?? submitError ?? queryError;
+
+  const handleResetSession = () => {
+    setLiveTurns([]);
+    setLatestFallback(false);
+    setValidationError(null);
+    askMutation.reset();
+    void clearDraft();
+  };
+
+  const handleSend = async (customPrompt?: string) => {
+    const question = (customPrompt ?? draft.prompt).trim();
+    if (!isAuthenticated) {
+      setValidationError('Vui lòng đăng nhập để trò chuyện cùng Trợ lý AI FilmLink.');
       return;
     }
-    setMessages((prev) => appendAdvisoryTurn(prev, query));
-    if (!customPrompt) {
-      updateDraft((prev) => ({ ...prev, prompt: '' }));
-      if (draft.frameText.trim() === '12' && draft.mode === 'chat') {
-        void clearDraft();
+    const validation = validateChatbotQuestion(question);
+    if (validation) {
+      setValidationError(validation);
+      return;
+    }
+    setValidationError(null);
+    try {
+      const response = await askMutation.mutateAsync({
+        question,
+        sessionId: activeSessionId,
+      });
+      setLiveTurns((prev) => [
+        ...prev,
+        buildLiveChatbotTurn(question, response, new Date().toISOString(), prev.length + 1),
+      ]);
+      setLatestFallback(response.fallback);
+      updateDraft((prev) => ({
+        sessionId: response.sessionId,
+        prompt: customPrompt ? prev.prompt : '',
+      }));
+      void queryClient.invalidateQueries({
+        queryKey: filmLinkQueryKeys.chatbot.messages(response.sessionId),
+      });
+    } catch (error) {
+      await markSubmissionFailed(error);
+      if (hasErrorCode(error, ErrorCode.AI_CHAT_SESSION_NOT_FOUND)) {
+        updateDraft((prev) => ({ ...prev, sessionId: null }));
       }
     }
   };
@@ -88,7 +176,7 @@ export function AiAdvisorScreen() {
           <VStack gap="none" className="flex-1">
             <Text variant="title">Trợ lý AI FilmLink</Text>
             <Text variant="caption" tone="muted">
-              Tư vấn Knowledge Base & Chẩn đoán Scan
+              Hỏi đáp Cẩm nang Chuyên gia (RAG) theo phiên
             </Text>
           </VStack>
           <Button
@@ -99,15 +187,22 @@ export function AiAdvisorScreen() {
             onPress={() => router.back()}
           />
         </HStack>
-        <SegmentedControl
-          testIDPrefix="ai.mode"
-          options={[
-            { value: 'chat', label: 'Hỏi đáp Cẩm nang AI' },
-            { value: 'diagnostics', label: 'Chẩn đoán Khung Scan' },
-          ]}
-          value={draft.mode}
-          onChange={(mode) => updateDraft((prev) => ({ ...prev, mode }))}
-        />
+
+        {!isAuthenticated ? (
+          <VStack gap="sm">
+            <Alert
+              testID="ai.auth-required"
+              tone="info"
+              message="Đăng nhập tài khoản FilmLink để gửi câu hỏi và lưu lịch sử phiên với Trợ lý AI."
+            />
+            <Button
+              testID="ai.login"
+              label="Đăng nhập để hỏi AI"
+              variant="primary"
+              onPress={() => router.push('/(auth)/login')}
+            />
+          </VStack>
+        ) : null}
 
         <DraftRecoveryBanner
           testID="ai.chat.draft-recovery"
@@ -115,92 +210,85 @@ export function AiAdvisorScreen() {
           pendingRetry={pendingRetry}
           lastErrorDetail={lastErrorDetail}
           lastSavedAt={lastSavedAt}
-          onRestore={() => void restoreDraft()}
-          onDiscard={() => void clearDraft()}
+          onRestore={() => {
+            setValidationError(null);
+            void restoreDraft();
+          }}
+          onDiscard={handleResetSession}
         />
 
-        {draft.mode === 'chat' ? (
-          <VStack gap="md">
-            <VStack gap="xs">
-              {SUGGESTED_PROMPTS.map((suggestion, idx) => (
-                <Button
-                  key={suggestion}
-                  testID={`ai.suggest.${idx}`}
-                  label={suggestion}
-                  variant="outline"
-                  size="sm"
-                  onPress={() => handleSend(suggestion)}
-                />
-              ))}
-            </VStack>
-
-            {messages.map((msg) => (
-              <Card key={msg.id} tone={msg.sender === 'AI' ? 'brand' : 'default'}>
-                <VStack gap="xs">
-                  <Badge
-                    label={msg.sender === 'AI' ? 'FilmLink AI' : 'Bạn'}
-                    tone={msg.sender === 'AI' ? 'brand' : 'neutral'}
-                  />
-                  <Text variant="secondary">{msg.text}</Text>
-                </VStack>
-              </Card>
-            ))}
-
-            <Input
-              testID="ai.chat.input"
-              label="Đặt câu hỏi về phim & hóa chất"
-              value={draft.prompt}
-              onChangeText={(prompt) => updateDraft((prev) => ({ ...prev, prompt }))}
-              placeholder="Ví dụ: Nên tráng ECN-2 ở đâu?"
-            />
+        <VStack gap="xs">
+          {SUGGESTED_PROMPTS.map((suggestion, idx) => (
             <Button
-              testID="ai.chat.send"
-              label="Gửi câu hỏi AI"
-              variant="primary"
-              onPress={() => handleSend()}
+              key={suggestion}
+              testID={`ai.suggest.${idx}`}
+              label={suggestion}
+              variant="outline"
+              size="sm"
+              disabled={askMutation.isPending}
+              onPress={() => void handleSend(suggestion)}
             />
-            <Button
-              testID="ai.chat.open-services"
-              label="Mở Danh bạ Phòng Lab"
-              variant="secondary"
-              onPress={() => {
-                router.back();
-                router.push('/(tabs)/services');
-              }}
-            />
-          </VStack>
-        ) : (
-          <Card>
-            <VStack gap="md">
-              <Input
-                testID="ai.diag.frame"
-                label="Số thứ tự khung phim cần kiểm tra"
-                value={draft.frameText}
-                onChangeText={(frameText) => updateDraft((prev) => ({ ...prev, frameText }))}
-                keyboardType="numeric"
-              />
-              <Button
-                testID="ai.diag.run"
-                label="Phân tích chất lượng Scan"
-                variant="primary"
-                onPress={() => setReport(analyzeFilmScanQuality(Number(draft.frameText) || 1))}
-              />
-              {report ? (
-                <Card tone="success">
-                  <VStack gap="xs">
-                    <Badge label={`Điểm chất lượng: ${report.overallScore}/100`} tone="success" />
-                    <Text variant="caption">{report.exposureAssessment}</Text>
-                    <Text variant="caption">{report.dustAndScratchReport}</Text>
-                    <Text variant="caption">{report.colorBalanceNote}</Text>
-                    <Text variant="secondary" tone="success">
-                      {report.recommendation}
-                    </Text>
-                  </VStack>
-                </Card>
-              ) : null}
-            </VStack>
+          ))}
+        </VStack>
+
+        {isAuthenticated && activeSessionId !== null && messagesQuery.isLoading ? (
+          <Card testID="ai.chat.loading" tone="muted">
+            <Text variant="secondary" tone="muted">
+              Đang tải lịch sử phiên trò chuyện #{activeSessionId}...
+            </Text>
           </Card>
-        )}
+        ) : null}
+
+        {displayMessages.map((msg) => (
+          <MessageBubbleCard key={msg.id} message={msg} />
+        ))}
+
+        {hasFallbackNotice ? (
+          <Alert
+            testID="ai.chat.fallback"
+            tone="warning"
+            message="Câu trả lời gần nhất được tổng hợp ngoài Cẩm nang Chuyên gia do chưa có bài viết khớp hoàn toàn."
+          />
+        ) : null}
+
+        {displayedError ? (
+          <Alert testID="ai.chat.error" tone="danger" message={displayedError} />
+        ) : null}
+
+        <Input
+          testID="ai.chat.input"
+          label="Đặt câu hỏi về phim & hóa chất (5 - 1000 ký tự)"
+          value={draft.prompt}
+          onChangeText={(prompt) => {
+            setValidationError(null);
+            updateDraft((prev) => ({ ...prev, prompt }));
+          }}
+          placeholder="Ví dụ: Nên tráng ECN-2 ở đâu và nhiệt độ bao nhiêu?"
+        />
+        <Button
+          testID="ai.chat.send"
+          label={askMutation.isPending ? 'Đang hỏi Trợ lý AI...' : 'Gửi câu hỏi AI'}
+          variant="primary"
+          loading={askMutation.isPending}
+          onPress={() => void handleSend()}
+        />
+        {activeSessionId !== null || messagesQuery.isError ? (
+          <Button
+            testID="ai.chat.new-session"
+            label="Cuộc trò chuyện mới"
+            variant="outline"
+            onPress={handleResetSession}
+          />
+        ) : null}
+        <Button
+          testID="ai.chat.open-services"
+          label="Mở Danh bạ Phòng Lab"
+          variant="secondary"
+          onPress={() => {
+            router.back();
+            router.push('/(tabs)/services');
+          }}
+        />
       </VStack>
     </Screen>
   );

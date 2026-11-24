@@ -1,11 +1,25 @@
 import { z } from 'zod';
 import {
+  type AskChatbotQuestionRequest,
+  AskChatbotQuestionRequestSchema,
+  type CancelServiceOrderRequest,
+  CancelServiceOrderRequestSchema,
   type ChangePasswordRequest,
   ChangePasswordRequestSchema,
+  type ChatbotAnswerResponse,
+  ChatbotAnswerResponseSchema,
+  ChatbotMessagePageSchema,
+  type ChatbotMessageResponse,
+  type ChatbotMessagesParams,
+  ChatbotMessagesParamsSchema,
   type CreateServiceOrderRequest,
   CreateServiceOrderRequestSchema,
   type DeletePushTokenRequest,
   DeletePushTokenRequestSchema,
+  type FilmArchiveRollResponse,
+  FilmArchiveRollResponseSchema,
+  FilmArchiveRollSummaryPageSchema,
+  type FilmArchiveRollSummaryResponse,
   type FilmFormatResponse,
   FilmFormatResponseSchema,
   type FilmProcessResponse,
@@ -45,6 +59,8 @@ import {
   ResetTokenResponseSchema,
   type ScheduleChangeAnswerRequest,
   ScheduleChangeAnswerRequestSchema,
+  type SearchFilmArchiveParams,
+  SearchFilmArchiveParamsSchema,
   type ServiceOrderDetailResponse,
   ServiceOrderDetailResponseSchema,
   type ServiceOrderListParams,
@@ -117,6 +133,22 @@ export type FilmLinkApi = {
     changeId: number,
     payload: ScheduleChangeAnswerRequest,
   ) => Promise<undefined>;
+  readonly confirmServiceOrderReceipt: (orderId: number) => Promise<ServiceOrderDetailResponse>;
+  readonly cancelServiceOrder: (
+    orderId: number,
+    payload: CancelServiceOrderRequest,
+  ) => Promise<ServiceOrderDetailResponse>;
+  readonly fetchFilmArchive: (
+    params?: SearchFilmArchiveParams,
+  ) => Promise<PageResponse<FilmArchiveRollSummaryResponse>>;
+  readonly fetchArchiveRollDetail: (archiveRollId: number) => Promise<FilmArchiveRollResponse>;
+  readonly askChatbotQuestion: (
+    payload: AskChatbotQuestionRequest,
+  ) => Promise<ChatbotAnswerResponse>;
+  readonly fetchChatbotSessionMessages: (
+    sessionId: number,
+    params?: ChatbotMessagesParams,
+  ) => Promise<PageResponse<ChatbotMessageResponse>>;
   readonly createVnpaySandboxUrl: (
     payload: VnpaySandboxUrlRequest,
   ) => Promise<VnpaySandboxUrlResponse>;
@@ -243,6 +275,37 @@ export function createFilmLinkApi(client: HttpClient): FilmLinkApi {
         ScheduleChangeAnswerRequestSchema.parse(payload),
         NoContentSchema,
       );
+    },
+    confirmServiceOrderReceipt: (orderId) => {
+      const id = PositiveIdSchema.parse(orderId);
+      return client.post(`/orders/${id}/confirm-receipt`, {}, ServiceOrderDetailResponseSchema);
+    },
+    cancelServiceOrder: (orderId, payload) => {
+      const id = PositiveIdSchema.parse(orderId);
+      return client.post(
+        `/orders/${id}/cancel`,
+        CancelServiceOrderRequestSchema.parse(payload),
+        ServiceOrderDetailResponseSchema,
+      );
+    },
+    fetchFilmArchive: (params) => {
+      const query = SearchFilmArchiveParamsSchema.parse(params ?? {});
+      return client.get('/me/archive', FilmArchiveRollSummaryPageSchema, { query });
+    },
+    fetchArchiveRollDetail: (archiveRollId) => {
+      const id = PositiveIdSchema.parse(archiveRollId);
+      return client.get(`/me/archive/rolls/${id}`, FilmArchiveRollResponseSchema);
+    },
+    askChatbotQuestion: (payload) =>
+      client.post(
+        '/chatbot/questions',
+        AskChatbotQuestionRequestSchema.parse(payload),
+        ChatbotAnswerResponseSchema,
+      ),
+    fetchChatbotSessionMessages: (sessionId, params) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      const query = ChatbotMessagesParamsSchema.parse(params ?? {});
+      return client.get(`/chatbot/sessions/${id}/messages`, ChatbotMessagePageSchema, { query });
     },
     createVnpaySandboxUrl: (payload) =>
       client.post(

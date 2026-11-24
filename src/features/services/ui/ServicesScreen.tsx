@@ -13,7 +13,7 @@ import {
 } from '@/shared/api';
 import { authStore, type LabSelectionDraft, LabSelectionDraftSchema } from '@/shared/domain';
 import { useDraftPersistence } from '@/shared/hooks';
-import { formatVnd, useStore } from '@/shared/lib';
+import { firstRouteParam, formatVnd, type RawRouteParam, useStore } from '@/shared/lib';
 import {
   Alert,
   Badge,
@@ -210,8 +210,13 @@ function ServicesDirectorySection({
   onChangeProcessId,
   selectedFormatId,
   onChangeFormatId,
+  selectedServiceTypeId,
+  onChangeServiceTypeId,
+  sortMode,
+  onChangeSortMode,
   processOptions,
   formatOptions,
+  serviceTypeOptions,
   filteredLabs,
   activeLabId,
   labDetail,
@@ -229,8 +234,13 @@ function ServicesDirectorySection({
   readonly onChangeProcessId: (value: number | 'ALL') => void;
   readonly selectedFormatId: number | 'ALL';
   readonly onChangeFormatId: (value: number | 'ALL') => void;
+  readonly selectedServiceTypeId: number | 'ALL';
+  readonly onChangeServiceTypeId: (value: number | 'ALL') => void;
+  readonly sortMode: 'default' | 'price';
+  readonly onChangeSortMode: (value: 'default' | 'price') => void;
   readonly processOptions: readonly { readonly value: string; readonly label: string }[];
   readonly formatOptions: readonly { readonly value: string; readonly label: string }[];
+  readonly serviceTypeOptions: readonly { readonly value: string; readonly label: string }[];
   readonly filteredLabs: readonly PublicFilmLabSummaryResponse[];
   readonly activeLabId: number | null;
   readonly labDetail: PublicFilmLabResponse | null;
@@ -253,6 +263,15 @@ function ServicesDirectorySection({
       />
 
       <FilterChipGroup
+        testIDPrefix="services.service-type"
+        label="Loại dịch vụ (Service Type)"
+        options={serviceTypeOptions}
+        value={String(selectedServiceTypeId)}
+        onChange={(value) => onChangeServiceTypeId(value === 'ALL' ? 'ALL' : Number(value))}
+        scrollable
+      />
+
+      <FilterChipGroup
         testIDPrefix="services.process"
         label="Hóa chất tráng (Process)"
         options={processOptions}
@@ -270,12 +289,23 @@ function ServicesDirectorySection({
         scrollable
       />
 
+      <FilterChipGroup
+        testIDPrefix="services.sort"
+        label="Sắp xếp kết quả"
+        options={[
+          { value: 'default', label: 'Mặc định' },
+          { value: 'price', label: 'Giá thấp nhất' },
+        ]}
+        value={sortMode}
+        onChange={(value) => onChangeSortMode(value === 'price' ? 'price' : 'default')}
+      />
+
       {!isLoadingLabs && !hasError && filteredLabs.length === 0 ? (
         <EmptyState
           testID="services.empty"
           actionTestID="services.reset-filters"
           title="Không tìm thấy Phòng Lab phù hợp"
-          description="Hãy thử đặt lại bộ lọc quy trình hóa chất hoặc khổ phim."
+          description="Hãy thử đặt lại bộ lọc dịch vụ, quy trình hóa chất hoặc khổ phim."
           actionLabel="Xóa bộ lọc"
           icon={<Icon name="search" size="lg" tone="muted" />}
           onAction={onResetFilters}
@@ -338,6 +368,8 @@ const INITIAL_LAB_SELECTION_DRAFT: LabSelectionDraft = {
   search: '',
   processId: 'ALL',
   formatId: 'ALL',
+  serviceTypeId: 'ALL',
+  sort: 'default',
   selectedLabId: null,
 };
 
@@ -347,18 +379,18 @@ function isLabSelectionDraftEmpty(draft: LabSelectionDraft): boolean {
     draft.search.trim().length === 0 &&
     draft.processId === INITIAL_LAB_SELECTION_DRAFT.processId &&
     draft.formatId === INITIAL_LAB_SELECTION_DRAFT.formatId &&
+    draft.serviceTypeId === INITIAL_LAB_SELECTION_DRAFT.serviceTypeId &&
+    draft.sort === INITIAL_LAB_SELECTION_DRAFT.sort &&
     draft.selectedLabId === INITIAL_LAB_SELECTION_DRAFT.selectedLabId
   );
 }
 
 function resolveActiveServiceError(
   activeLabId: number | null,
-  labsError: unknown,
-  processesError: unknown,
-  formatsError: unknown,
+  errors: readonly unknown[],
   detailError: unknown,
 ): unknown {
-  return labsError ?? processesError ?? formatsError ?? (activeLabId !== null ? detailError : null);
+  return errors.find(Boolean) ?? (activeLabId !== null ? detailError : null);
 }
 
 function refetchErroredServiceQueries(
@@ -372,8 +404,9 @@ function refetchErroredServiceQueries(
 }
 
 export function ServicesScreen() {
-  const params = useLocalSearchParams<{ tab?: string; labId?: string }>();
-  const paramLabId = parsePositiveId(params.labId);
+  const params = useLocalSearchParams<{ tab?: RawRouteParam; labId?: RawRouteParam }>();
+  const paramLabId = parsePositiveId(firstRouteParam(params.labId));
+  const paramTab = firstRouteParam(params.tab);
   const user = useStore(authStore, (state) => state.user);
 
   const [tabOverride, setTabOverride] = useState<'directory' | 'booking' | null>(null);
@@ -382,6 +415,8 @@ export function ServicesScreen() {
   const [search, setSearch] = useState('');
   const [selectedProcessId, setSelectedProcessId] = useState<number | 'ALL'>('ALL');
   const [selectedFormatId, setSelectedFormatId] = useState<number | 'ALL'>('ALL');
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<number | 'ALL'>('ALL');
+  const [sortMode, setSortMode] = useState<'default' | 'price'>('default');
 
   const {
     hasRecoverableDraft,
@@ -399,7 +434,7 @@ export function ServicesScreen() {
     isEmpty: isLabSelectionDraftEmpty,
   });
 
-  const activeTab = tabOverride ?? (params.tab === 'booking' ? 'booking' : 'directory');
+  const activeTab = tabOverride ?? (paramTab === 'booking' ? 'booking' : 'directory');
   const activeLabId = selectedLabIdOverride ?? paramLabId;
 
   const processesQuery = useQuery({
@@ -414,9 +449,17 @@ export function ServicesScreen() {
     staleTime: CATALOG_STALE_TIME_MS,
   });
 
+  const serviceTypesQuery = useQuery({
+    queryKey: filmLinkQueryKeys.catalogs.serviceTypes(),
+    queryFn: filmLinkApi.fetchServiceTypes,
+    staleTime: CATALOG_STALE_TIME_MS,
+  });
+
   const labSearchParams = buildPublicLabSearchParams({
     processId: selectedProcessId,
     formatId: selectedFormatId,
+    serviceTypeId: selectedServiceTypeId,
+    sort: sortMode,
     size: 20,
   });
 
@@ -438,9 +481,7 @@ export function ServicesScreen() {
   const resolvedPackage = resolveSelectedPackage(resolvedLab, selectedPackage);
   const activeError = resolveActiveServiceError(
     activeLabId,
-    labsQuery.error,
-    processesQuery.error,
-    formatsQuery.error,
+    [labsQuery.error, processesQuery.error, formatsQuery.error, serviceTypesQuery.error],
     labDetailQuery.error,
   );
   const isDetailLoadingForBooking =
@@ -479,10 +520,22 @@ export function ServicesScreen() {
     updateDraft((prev) => ({ ...prev, formatId }));
   };
 
+  const handleServiceTypeChange = (serviceTypeId: number | 'ALL') => {
+    setSelectedServiceTypeId(serviceTypeId);
+    updateDraft((prev) => ({ ...prev, serviceTypeId }));
+  };
+
+  const handleSortChange = (sort: 'default' | 'price') => {
+    setSortMode(sort);
+    updateDraft((prev) => ({ ...prev, sort }));
+  };
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedProcessId('ALL');
     setSelectedFormatId('ALL');
+    setSelectedServiceTypeId('ALL');
+    setSortMode('default');
     void clearDraft();
   };
 
@@ -496,6 +549,8 @@ export function ServicesScreen() {
     setSearch(restored.search);
     setSelectedProcessId(restored.processId);
     setSelectedFormatId(restored.formatId);
+    setSelectedServiceTypeId(restored.serviceTypeId);
+    setSortMode(restored.sort);
   };
 
   const handleRetry = () => {
@@ -503,6 +558,7 @@ export function ServicesScreen() {
       labsQuery,
       processesQuery,
       formatsQuery,
+      serviceTypesQuery,
       ...(activeLabId !== null ? [labDetailQuery] : []),
     ]);
   };
@@ -558,11 +614,19 @@ export function ServicesScreen() {
               onChangeProcessId={handleProcessChange}
               selectedFormatId={selectedFormatId}
               onChangeFormatId={handleFormatChange}
+              selectedServiceTypeId={selectedServiceTypeId}
+              onChangeServiceTypeId={handleServiceTypeChange}
+              sortMode={sortMode}
+              onChangeSortMode={handleSortChange}
               processOptions={buildCatalogFilterOptions(
                 'Tất cả quy trình',
                 processesQuery.data ?? [],
               )}
               formatOptions={buildCatalogFilterOptions('Mọi khổ phim', formatsQuery.data ?? [])}
+              serviceTypeOptions={buildCatalogFilterOptions(
+                'Tất cả dịch vụ',
+                serviceTypesQuery.data ?? [],
+              )}
               filteredLabs={filteredLabs}
               activeLabId={activeLabId}
               labDetail={resolvedLab}

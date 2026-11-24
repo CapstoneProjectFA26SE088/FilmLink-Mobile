@@ -1,4 +1,5 @@
 export {
+  addBookingRoll,
   buildLiveOrderPayload,
   buildPickupWindowRange,
   buildPublicLabSearchParams,
@@ -7,6 +8,8 @@ export {
   clampPushPullStops,
   clampRollCount,
   clampShootingIso,
+  createBookingRollDraft,
+  duplicateBookingRoll,
   filterLabs,
   filterPublicLabSummaries,
   formatOpeningHoursSummary,
@@ -14,7 +17,14 @@ export {
   type LiveBookingDraft,
   LiveBookingDraftSchema,
   type LiveBookingInput,
+  type LiveBookingRollDraft,
+  LiveBookingRollDraftSchema,
+  type LiveBookingRollInput,
   mapServiceApiError,
   type PublicLabSearchInput,
+  removeBookingRoll,
+  resolveRollPackage,
+  resolveScanOptionId,
+  updateBookingRoll,
 } from './model/services';
 export { ServicesScreen } from './ui/ServicesScreen';

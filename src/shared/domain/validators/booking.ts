@@ -78,8 +78,11 @@ function validateOrderMetadata(order: ServiceOrderValidationInput): string | nul
   ) {
     return 'Phương thức bàn giao không được hỗ trợ trong giai đoạn này.';
   }
-  if (order.paymentMethod !== PaymentMethod.ONLINE) {
-    return 'Chỉ hỗ trợ thanh toán trực tuyến trong giai đoạn này.';
+  if (
+    order.paymentMethod !== PaymentMethod.ONLINE &&
+    order.paymentMethod !== PaymentMethod.PAY_AT_LAB
+  ) {
+    return 'Chỉ hỗ trợ thanh toán tại Lab hoặc VNPay trực tuyến trong giai đoạn này.';
   }
   if (order.specialRequest && order.specialRequest.length > 500) {
     return 'Yêu cầu đặc biệt không được vượt quá 500 ký tự.';

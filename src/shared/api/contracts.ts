@@ -1,5 +1,7 @@
+export * from './contracts/archive';
 export * from './contracts/auth';
 export * from './contracts/catalog';
+export * from './contracts/chatbot';
 export * from './contracts/common';
 export * from './contracts/labs';
 export * from './contracts/notifications';

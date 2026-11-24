@@ -29,6 +29,7 @@ export { formatDateTimeVn, formatDateVn, formatVnd, VIETNAM_TIMEZONE } from './f
 export {
   ApiError,
   type ApiProblemDetail,
+  type ArchiveIncompleteRollInfo,
   createNetworkProblem,
   DEFAULT_ERROR_MESSAGE,
   DEFAULT_NETWORK_MESSAGE,
@@ -46,4 +47,5 @@ export {
   toProblemDetail,
 } from './problem-detail';
 export { type Err, err, type Ok, ok, type Result, unwrapOr } from './result';
+export { firstRouteParam, type RawRouteParam } from './route-params';
 export { createStore, type Store, type StoreListener, useStore } from './store';

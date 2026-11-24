@@ -24,7 +24,7 @@ export const FilmStockResponseSchema = z.object({
   id: PositiveIdSchema,
   stockName: z.string().min(1),
   manufacturer: z.string().min(1),
-  iso: z.number().int().min(1).max(6400),
+  iso: z.number().int().min(1).max(32_000),
   defaultFilmProcessId: PositiveIdSchema,
   defaultFilmProcessName: z.string().min(1),
   status: z.enum(CatalogStatus),

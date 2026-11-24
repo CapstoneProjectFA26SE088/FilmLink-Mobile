@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   CATALOG_STALE_TIME_MS,
-  type FilmStockResponse,
   filmLinkApi,
   filmLinkQueryKeys,
   type PublicFilmLabResponse,
@@ -14,6 +13,8 @@ import {
   authStore,
   HANDOVER_METHOD_LABELS,
   HandoverMethod,
+  PAYMENT_METHOD_LABELS,
+  PaymentMethod,
   validateServiceOrderRequestInput,
 } from '@/shared/domain';
 import { useDraftPersistence } from '@/shared/hooks';
@@ -32,18 +33,23 @@ import {
   VStack,
 } from '@/shared/ui';
 import {
+  addBookingRoll,
   buildLiveOrderPayload,
   buildPickupWindowRange,
   buildSubmitOrderPayload,
-  clampExposureCount,
-  clampPushPullStops,
-  clampRollCount,
-  clampShootingIso,
+  createBookingRollDraft,
+  duplicateBookingRoll,
   type LiveBookingDraft,
   LiveBookingDraftSchema,
   type LiveBookingInput,
+  type LiveBookingRollDraft,
   mapServiceApiError,
+  removeBookingRoll,
+  resolveRollPackage,
+  resolveScanOptionId,
+  updateBookingRoll,
 } from '../model/services';
+import { BookingRollEditorCard } from './BookingRollCardSection';
 
 export type BookingWizardSectionProps = {
   readonly selectedLab: PublicFilmLabResponse | null;
@@ -53,13 +59,8 @@ export type BookingWizardSectionProps = {
 };
 
 const INITIAL_LIVE_BOOKING_DRAFT: LiveBookingDraft = {
-  filmStockId: null,
-  filmStockNameText: '',
-  scanOptionId: null,
-  rollCount: 1,
-  exposureCount: 36,
-  shootingIso: 400,
-  pushPullStops: 0,
+  paymentMethod: PaymentMethod.PAY_AT_LAB,
+  rolls: [createBookingRollDraft(null)],
   handoverMethod: HandoverMethod.SELF_DROP_OFF,
   specialRequest: '',
   customerAddressLine: '',
@@ -69,8 +70,6 @@ const INITIAL_LIVE_BOOKING_DRAFT: LiveBookingDraft = {
   pickupWindowStartAt: '',
   pickupWindowEndAt: '',
 };
-
-const ISO_PRESETS = ['100', '200', '400', '800', '1600', '3200'] as const;
 
 const LIVE_HANDOVER_OPTIONS = [
   {
@@ -83,16 +82,29 @@ const LIVE_HANDOVER_OPTIONS = [
   },
 ] as const;
 
-function resolveScanOptionId(
-  selectedPackage: PublicServicePackage,
-  draftScanOptionId: number | null,
-): number | null {
-  if (draftScanOptionId === null) {
-    return null;
+const LIVE_PAYMENT_OPTIONS = [
+  {
+    value: PaymentMethod.PAY_AT_LAB,
+    label: PAYMENT_METHOD_LABELS[PaymentMethod.PAY_AT_LAB],
+  },
+  {
+    value: PaymentMethod.ONLINE,
+    label: PAYMENT_METHOD_LABELS[PaymentMethod.ONLINE],
+  },
+] as const;
+
+function isBookingDraftEmpty(draft: LiveBookingDraft): boolean {
+  const firstRoll = draft.rolls[0];
+  if (!firstRoll) {
+    return false;
   }
-  return selectedPackage.scanOptions.some((opt) => opt.id === draftScanOptionId)
-    ? draftScanOptionId
-    : null;
+  return (
+    draft.rolls.length === 1 &&
+    firstRoll.filmStockId === null &&
+    !firstRoll.filmStockNameText.trim() &&
+    !draft.specialRequest.trim() &&
+    draft.paymentMethod === PaymentMethod.PAY_AT_LAB
+  );
 }
 
 function buildBookingInputFromDraft(
@@ -100,17 +112,25 @@ function buildBookingInputFromDraft(
   selectedPackage: PublicServicePackage,
   draft: LiveBookingDraft,
 ): LiveBookingInput {
+  const rolls = draft.rolls.map((roll) => {
+    const pkg =
+      resolveRollPackage(selectedLab, roll.servicePackageId, selectedPackage) ?? selectedPackage;
+    return {
+      servicePackageId: pkg.id,
+      filmFormatId: pkg.filmFormat.id,
+      servicePackageScanOptionId: resolveScanOptionId(pkg, roll.scanOptionId),
+      filmStockId: roll.filmStockId,
+      filmStockNameText: roll.filmStockId ? null : roll.filmStockNameText,
+      exposureCount: roll.exposureCount,
+      shootingIso: roll.shootingIso,
+      pushPullStops: pkg.pushPullAvailable ? roll.pushPullStops : 0,
+    };
+  });
+
   return {
     filmLabId: selectedLab.id,
-    servicePackageId: selectedPackage.id,
-    filmFormatId: selectedPackage.filmFormat.id,
-    servicePackageScanOptionId: resolveScanOptionId(selectedPackage, draft.scanOptionId),
-    filmStockId: draft.filmStockId,
-    filmStockNameText: draft.filmStockNameText,
-    rollCount: draft.rollCount,
-    exposureCount: draft.exposureCount,
-    shootingIso: draft.shootingIso,
-    pushPullStops: selectedPackage.pushPullAvailable ? draft.pushPullStops : 0,
+    paymentMethod: draft.paymentMethod,
+    rolls,
     filmHandoverMethod: draft.handoverMethod,
     specialRequest: draft.specialRequest,
     customerAddressLine: draft.customerAddressLine,
@@ -123,15 +143,6 @@ function buildBookingInputFromDraft(
 }
 
 function validateLiveBookingInput(input: LiveBookingInput): string | null {
-  const roll = {
-    filmStockId: input.filmStockId,
-    filmStockNameText: input.filmStockId ? null : input.filmStockNameText,
-    filmFormatId: input.filmFormatId,
-    exposureCount: input.exposureCount,
-    shootingIso: input.shootingIso,
-    servicePackageId: input.servicePackageId,
-    pushPullStops: input.pushPullStops,
-  };
   const payload = buildLiveOrderPayload(input);
   return validateServiceOrderRequestInput({
     filmLabId: payload.filmLabId,
@@ -145,196 +156,16 @@ function validateLiveBookingInput(input: LiveBookingInput): string | null {
     customerPhone: payload.customerPhone,
     pickupWindowStartAt: payload.pickupWindowStartAt,
     pickupWindowEndAt: payload.pickupWindowEndAt,
-    rolls: Array.from({ length: payload.rolls.length }, () => roll),
+    rolls: payload.rolls.map((roll) => ({
+      filmStockId: roll.filmStockId,
+      filmStockNameText: roll.filmStockNameText,
+      filmFormatId: roll.filmFormatId,
+      exposureCount: roll.exposureCount,
+      shootingIso: roll.shootingIso ?? 400,
+      servicePackageId: roll.servicePackageId,
+      pushPullStops: roll.pushPullStops ?? 0,
+    })),
   });
-}
-
-function FilmStockSelectorSection({
-  stocks,
-  selectedStockId,
-  customStockName,
-  onChangeCustomStock,
-  onSelectCatalogStock,
-}: {
-  readonly stocks: readonly FilmStockResponse[];
-  readonly selectedStockId: number | null;
-  readonly customStockName: string;
-  readonly onChangeCustomStock: (text: string) => void;
-  readonly onSelectCatalogStock: (stockId: number) => void;
-}) {
-  return (
-    <VStack gap="sm">
-      <Input
-        testID="services.booking.film-stock"
-        label="Dòng phim (chọn danh mục hoặc nhập tự do)"
-        value={customStockName}
-        onChangeText={onChangeCustomStock}
-        placeholder="Kodak Portra 400"
-        icon={<Icon name="camera-outline" size="sm" tone="muted" />}
-      />
-      {selectedStockId !== null ? (
-        <Badge label={`Đã chọn dòng phim danh mục #${selectedStockId}`} tone="brand" />
-      ) : null}
-      {stocks.length > 0 ? (
-        <FilterChipGroup
-          testIDPrefix="services.booking.stock"
-          label="Danh mục phim phổ biến"
-          options={stocks.map((stock) => ({
-            value: String(stock.id),
-            label: `${stock.stockName} (${stock.iso})`,
-          }))}
-          value={selectedStockId !== null ? String(selectedStockId) : ''}
-          onChange={(val) => onSelectCatalogStock(Number(val))}
-          scrollable
-        />
-      ) : null}
-    </VStack>
-  );
-}
-
-function RollSpecsSection({
-  draft,
-  selectedPackage,
-  onUpdateDraft,
-}: {
-  readonly draft: LiveBookingDraft;
-  readonly selectedPackage: PublicServicePackage;
-  readonly onUpdateDraft: (updater: (prev: LiveBookingDraft) => LiveBookingDraft) => void;
-}) {
-  const effectiveStops = selectedPackage.pushPullAvailable ? draft.pushPullStops : 0;
-
-  return (
-    <VStack gap="sm">
-      <HStack justify="between" align="center" className="py-1">
-        <VStack gap="none">
-          <Text variant="secondary">Số lượng cuộn</Text>
-          <Text variant="caption" tone="muted">
-            Từ 1 đến 20 cuộn/đơn
-          </Text>
-        </VStack>
-        <HStack gap="sm" align="center">
-          <Button
-            testID="services.booking.rolls-dec"
-            label="-"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            onPress={() =>
-              onUpdateDraft((prev) => ({ ...prev, rollCount: clampRollCount(prev.rollCount, -1) }))
-            }
-          />
-          <Text variant="heading" className="w-8 text-center">
-            {draft.rollCount}
-          </Text>
-          <Button
-            testID="services.booking.rolls-inc"
-            label="+"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            onPress={() =>
-              onUpdateDraft((prev) => ({ ...prev, rollCount: clampRollCount(prev.rollCount, 1) }))
-            }
-          />
-        </HStack>
-      </HStack>
-
-      <HStack justify="between" align="center" className="py-1">
-        <VStack gap="none">
-          <Text variant="secondary">Số kiểu chụp / cuộn</Text>
-          <Text variant="caption" tone="muted">
-            Từ 1 đến 40 kiểu
-          </Text>
-        </VStack>
-        <HStack gap="sm" align="center">
-          <Button
-            testID="services.booking.exposures-dec"
-            label="-"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            onPress={() =>
-              onUpdateDraft((prev) => ({
-                ...prev,
-                exposureCount: clampExposureCount(prev.exposureCount, -1),
-              }))
-            }
-          />
-          <Text variant="heading" className="w-8 text-center">
-            {draft.exposureCount}
-          </Text>
-          <Button
-            testID="services.booking.exposures-inc"
-            label="+"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            onPress={() =>
-              onUpdateDraft((prev) => ({
-                ...prev,
-                exposureCount: clampExposureCount(prev.exposureCount, 1),
-              }))
-            }
-          />
-        </HStack>
-      </HStack>
-
-      <FilterChipGroup
-        testIDPrefix="services.booking.iso"
-        label="Độ nhạy sáng khi chụp (Shooting ISO)"
-        options={ISO_PRESETS.map((iso) => ({ value: iso, label: `ISO ${iso}` }))}
-        value={String(draft.shootingIso)}
-        onChange={(iso) =>
-          onUpdateDraft((prev) => ({ ...prev, shootingIso: clampShootingIso(Number(iso)) }))
-        }
-        scrollable
-      />
-
-      <HStack justify="between" align="center" className="py-1">
-        <VStack gap="none" className="flex-1 pr-2">
-          <Text variant="secondary">Push / Pull (Stops)</Text>
-          <Text variant="caption" tone="muted">
-            {selectedPackage.pushPullAvailable
-              ? `+${formatVnd(selectedPackage.pushPullSurchargePerStopVnd ?? 0)} / stop / cuộn`
-              : 'Gói này không hỗ trợ Push / Pull'}
-          </Text>
-        </VStack>
-        <HStack gap="sm" align="center">
-          <Button
-            testID="services.booking.stops-dec"
-            label="-"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            disabled={!selectedPackage.pushPullAvailable}
-            onPress={() =>
-              onUpdateDraft((prev) => ({
-                ...prev,
-                pushPullStops: clampPushPullStops(prev.pushPullStops, -1),
-              }))
-            }
-          />
-          <Text variant="heading" className="w-8 text-center">
-            {effectiveStops > 0 ? `+${effectiveStops}` : effectiveStops}
-          </Text>
-          <Button
-            testID="services.booking.stops-inc"
-            label="+"
-            size="sm"
-            variant="outline"
-            className="w-11"
-            disabled={!selectedPackage.pushPullAvailable}
-            onPress={() =>
-              onUpdateDraft((prev) => ({
-                ...prev,
-                pushPullStops: clampPushPullStops(prev.pushPullStops, 1),
-              }))
-            }
-          />
-        </HStack>
-      </HStack>
-    </VStack>
-  );
 }
 
 function PickupFieldsSection({
@@ -468,6 +299,7 @@ export function BookingWizardSection({
   const queryClient = useQueryClient();
   const accountId = useStore(authStore, (state) => state.user?.id ?? null);
   const [stockSearch, setStockSearch] = useState('');
+  const [activeRollIndex, setActiveRollIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -486,8 +318,7 @@ export function BookingWizardSection({
     accountId,
     schema: LiveBookingDraftSchema,
     initialDraft: INITIAL_LIVE_BOOKING_DRAFT,
-    isEmpty: (d) =>
-      d.filmStockId === null && !d.filmStockNameText.trim() && !d.specialRequest.trim(),
+    isEmpty: isBookingDraftEmpty,
   });
 
   const stocksQuery = useQuery({
@@ -536,8 +367,6 @@ export function BookingWizardSection({
     );
   }
 
-  const effectiveScanOptionId = resolveScanOptionId(selectedPackage, draft.scanOptionId);
-
   const handleQuote = async () => {
     const input = buildBookingInputFromDraft(selectedLab, selectedPackage, draft);
     const validationError = validateLiveBookingInput(input);
@@ -545,10 +374,9 @@ export function BookingWizardSection({
       setError(validationError);
       return;
     }
-    const payload = buildLiveOrderPayload(input);
     setError(null);
     try {
-      await quoteMutation.mutateAsync(payload);
+      await quoteMutation.mutateAsync(buildLiveOrderPayload(input));
     } catch (err) {
       setError(mapServiceApiError(err));
     }
@@ -561,8 +389,9 @@ export function BookingWizardSection({
       setError(validationError);
       return;
     }
-    const payload = buildSubmitOrderPayload(input, idempotencyKey);
-    const parsed = SubmitServiceOrderRequestSchema.safeParse(payload);
+    const parsed = SubmitServiceOrderRequestSchema.safeParse(
+      buildSubmitOrderPayload(input, idempotencyKey),
+    );
     if (!parsed.success) {
       setError('Thông tin đơn hàng hoặc khung giờ lấy phim chưa đúng định dạng ISO.');
       return;
@@ -577,6 +406,14 @@ export function BookingWizardSection({
       setError(mapServiceApiError(err));
       void markSubmissionFailed(err);
     }
+  };
+
+  const handleUpdateRoll = (
+    index: number,
+    updater: (roll: LiveBookingRollDraft) => LiveBookingRollDraft,
+  ) => {
+    setError(null);
+    updateDraft((prev) => ({ ...prev, rolls: [...updateBookingRoll(prev.rolls, index, updater)] }));
   };
 
   return (
@@ -607,51 +444,46 @@ export function BookingWizardSection({
         </VStack>
       </Card>
 
+      <BookingRollEditorCard
+        rolls={draft.rolls}
+        activeIndex={activeRollIndex}
+        selectedLab={selectedLab}
+        fallbackPackage={selectedPackage}
+        stocks={stocksQuery.data ?? []}
+        onChangeStockSearch={setStockSearch}
+        onAddRoll={() => {
+          setError(null);
+          const nextIndex = draft.rolls.length;
+          updateDraft((prev) => ({
+            ...prev,
+            rolls: [...addBookingRoll(prev.rolls, selectedPackage.id)],
+          }));
+          setActiveRollIndex(nextIndex);
+        }}
+        onSelectRoll={setActiveRollIndex}
+        onDuplicateRoll={(idx) => {
+          setError(null);
+          updateDraft((prev) => ({ ...prev, rolls: [...duplicateBookingRoll(prev.rolls, idx)] }));
+          setActiveRollIndex(Math.min(idx + 1, 19));
+        }}
+        onRemoveRoll={(idx) => {
+          setError(null);
+          updateDraft((prev) => ({ ...prev, rolls: [...removeBookingRoll(prev.rolls, idx)] }));
+          setActiveRollIndex((prevIdx) => Math.max(0, Math.min(prevIdx, draft.rolls.length - 2)));
+        }}
+        onUpdateRoll={handleUpdateRoll}
+      />
+
       <Card>
         <VStack gap="md">
-          <FilmStockSelectorSection
-            stocks={stocksQuery.data ?? []}
-            selectedStockId={draft.filmStockId}
-            customStockName={draft.filmStockNameText}
-            onChangeCustomStock={(text) => {
+          <FilterChipGroup
+            testIDPrefix="services.booking.payment"
+            label="Phương thức thanh toán"
+            options={LIVE_PAYMENT_OPTIONS}
+            value={draft.paymentMethod}
+            onChange={(paymentMethod) => {
               setError(null);
-              setStockSearch(text);
-              updateDraft((prev) => ({ ...prev, filmStockId: null, filmStockNameText: text }));
-            }}
-            onSelectCatalogStock={(stockId) => {
-              setError(null);
-              updateDraft((prev) => ({ ...prev, filmStockId: stockId, filmStockNameText: '' }));
-            }}
-          />
-
-          {selectedPackage.scanOptions.length > 0 ? (
-            <FilterChipGroup
-              testIDPrefix="services.booking.scan"
-              label="Tùy chọn độ phân giải Scan"
-              options={[
-                { value: 'NONE', label: 'Mặc định gói' },
-                ...selectedPackage.scanOptions.map((opt) => ({
-                  value: String(opt.id),
-                  label: `${opt.resolutionLabel} (${opt.priceVnd === 0 ? 'Miễn phí' : formatVnd(opt.priceVnd)})`,
-                })),
-              ]}
-              value={effectiveScanOptionId !== null ? String(effectiveScanOptionId) : 'NONE'}
-              onChange={(val) =>
-                updateDraft((prev) => ({
-                  ...prev,
-                  scanOptionId: val === 'NONE' ? null : Number(val),
-                }))
-              }
-              scrollable
-            />
-          ) : null}
-
-          <RollSpecsSection
-            draft={draft}
-            selectedPackage={selectedPackage}
-            onUpdateDraft={(updater) => {
-              setError(null);
-              updateDraft(updater);
+              updateDraft((prev) => ({ ...prev, paymentMethod }));
             }}
           />
 
@@ -677,7 +509,7 @@ export function BookingWizardSection({
           />
 
           <Text variant="caption" tone="muted">
-            Giai đoạn 1 áp dụng gói Tiêu chuẩn (STANDARD) và thanh toán VNPay trực tuyến. Các lựa
+            Giai đoạn 1 áp dụng gói Tiêu chuẩn (STANDARD) với Thanh toán tại Lab hoặc VNPay. Các lựa
             chọn PARCEL_SHIPPING, EXPRESS và COD chưa khả dụng.
           </Text>
 

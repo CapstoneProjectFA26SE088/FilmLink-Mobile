@@ -79,7 +79,6 @@
       "entry": "src/features/home/ui/HomeScreen.tsx",
       "testIDs": [
         "home.screen",
-        "home.toggle-role",
         "home.open-upgrade",
         "home.open-ai",
         "home.open-expert",
@@ -112,8 +111,7 @@
         "services.booking.choose-lab",
         "services.booking.error",
         "services.booking.film-stock",
-        "services.booking.rolls-dec",
-        "services.booking.rolls-inc",
+        "services.booking.roll-add",
         "services.booking.exposures-dec",
         "services.booking.exposures-inc",
         "services.booking.stops-dec",
@@ -130,8 +128,8 @@
         "services.booking.submit"
       ],
       "invariants": [
-        "Filters live public labs by search query, film process, and film format",
-        "Clamps rolls [1, 20], exposures [1, 40], ISO [1, 12800], and push/pull [-3, 3] with idempotent live booking"
+        "Filters live public labs by search query, film process, film format, service type, and price sort",
+        "Supports 1..20 heterogeneous rolls (per-roll stock, package, scan, exposures, ISO, push/pull) and PAY_AT_LAB or ONLINE booking"
       ]
     },
     {
@@ -145,11 +143,25 @@
         "orders.loading",
         "orders.error",
         "orders.retry",
-        "orders.empty"
+        "orders.empty",
+        "orders.action.draft-recovery",
+        "orders.load-more",
+        "orders.archive.loading",
+        "orders.archive.error",
+        "orders.archive.retry",
+        "orders.archive.empty",
+        "orders.archive.load-more",
+        "orders.archive-detail.screen",
+        "orders.archive-detail.back",
+        "orders.archive-detail.refresh",
+        "orders.archive-detail.error",
+        "orders.archive-detail.loading",
+        "orders.archive-detail.retry",
+        "orders.archive-detail.open-full-res"
       ],
       "invariants": [
-        "BR-07: Tracks 6 sequential lab processing stages from live GET /orders/{id}",
-        "Handles signed handover photo refresh on 403 STORAGE_LINK_INVALID and VNPay sandbox payments"
+        "BR-07: Tracks 6 sequential lab processing stages, order cancellation, receipt confirmation (DELIVERED -> CLOSED), and paginated orders",
+        "Fetches paginated Digital Film Archive (/me/archive) & roll details (/me/archive/rolls/{id}), refreshes 403 signed URLs, and handles VNPay sandbox payments"
       ]
     },
     {
@@ -238,17 +250,20 @@
       "entry": "src/features/ai-advisor/ui/AiAdvisorScreen.tsx",
       "testIDs": [
         "ai.screen",
+        "ai.auth-required",
+        "ai.login",
         "ai.chat.draft-recovery",
+        "ai.chat.loading",
+        "ai.chat.fallback",
+        "ai.chat.error",
         "ai.chat.input",
         "ai.chat.send",
+        "ai.chat.new-session",
         "ai.chat.open-services",
-        "ai.diag.frame",
-        "ai.diag.run",
         "ai.back"
       ],
       "invariants": [
-        "Provides advisory chat responses grounded in FilmLink Knowledge Base",
-        "Generates frame scan quality diagnostics"
+        "Connects to live RAG Chatbot (/chatbot/questions & /chatbot/sessions/{id}/messages) with session recovery, citations, and fallback notice"
       ]
     },
     {
@@ -259,7 +274,6 @@
       "entry": "src/features/profile/ui/ProfileScreen.tsx",
       "testIDs": [
         "profile.screen",
-        "profile.role-toggle",
         "profile.open-upgrade",
         "profile.name",
         "profile.phone",

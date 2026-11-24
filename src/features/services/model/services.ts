@@ -2,8 +2,10 @@ import { z } from 'zod';
 import type {
   CreateServiceOrderRequest,
   FilmLabOpeningHour,
+  PublicFilmLabResponse,
   PublicFilmLabSearchParams,
   PublicFilmLabSummaryResponse,
+  PublicServicePackage,
   SubmitServiceOrderRequest,
 } from '@/shared/api';
 import {
@@ -34,20 +36,26 @@ export type LabFilterCriteria = {
 export type PublicLabSearchInput = {
   readonly processId?: number | 'ALL';
   readonly formatId?: number | 'ALL';
+  readonly serviceTypeId?: number | 'ALL';
+  readonly sort?: 'default' | 'price';
   readonly size?: number;
 };
 
-export type LiveBookingInput = {
-  readonly filmLabId: number;
+export type LiveBookingRollInput = {
   readonly servicePackageId: number;
   readonly filmFormatId: number;
   readonly servicePackageScanOptionId?: number | null;
   readonly filmStockId?: number | null;
   readonly filmStockNameText?: string | null;
-  readonly rollCount: number;
   readonly exposureCount: number;
   readonly shootingIso: number;
   readonly pushPullStops: number;
+};
+
+export type LiveBookingInput = {
+  readonly filmLabId: number;
+  readonly paymentMethod?: typeof PaymentMethod.PAY_AT_LAB | typeof PaymentMethod.ONLINE;
+  readonly rolls: readonly LiveBookingRollInput[];
   readonly filmHandoverMethod: HandoverMethod;
   readonly specialRequest?: string;
   readonly customerAddressLine?: string;
@@ -58,14 +66,24 @@ export type LiveBookingInput = {
   readonly pickupWindowEndAt?: string;
 };
 
-export const LiveBookingDraftSchema = z.object({
+export const LiveBookingRollDraftSchema = z.object({
+  id: z.string().min(1),
   filmStockId: z.number().int().positive().nullable(),
   filmStockNameText: z.string(),
+  servicePackageId: z.number().int().positive().nullable(),
   scanOptionId: z.number().int().positive().nullable(),
-  rollCount: z.number().int().min(MIN_ROLL_COUNT).max(MAX_ROLL_COUNT),
   exposureCount: z.number().int().min(MIN_EXPOSURE_COUNT).max(MAX_EXPOSURE_COUNT),
   shootingIso: z.number().int().min(MIN_SHOOTING_ISO).max(MAX_SHOOTING_ISO),
   pushPullStops: z.number().int().min(MIN_PUSH_PULL_STOPS).max(MAX_PUSH_PULL_STOPS),
+});
+
+export type LiveBookingRollDraft = z.infer<typeof LiveBookingRollDraftSchema>;
+
+export const LiveBookingDraftSchema = z.object({
+  paymentMethod: z
+    .enum([PaymentMethod.PAY_AT_LAB, PaymentMethod.ONLINE])
+    .default(PaymentMethod.PAY_AT_LAB),
+  rolls: z.array(LiveBookingRollDraftSchema).min(MIN_ROLL_COUNT).max(MAX_ROLL_COUNT),
   handoverMethod: z.enum([HandoverMethod.SELF_DROP_OFF, HandoverMethod.PICKUP]),
   specialRequest: z.string(),
   customerAddressLine: z.string(),
@@ -77,6 +95,95 @@ export const LiveBookingDraftSchema = z.object({
 });
 
 export type LiveBookingDraft = z.infer<typeof LiveBookingDraftSchema>;
+
+let rollDraftSequence = 0;
+
+function nextRollDraftId(): string {
+  rollDraftSequence += 1;
+  return `roll-${Date.now()}-${rollDraftSequence}`;
+}
+
+export function createBookingRollDraft(
+  servicePackageId: number | null = null,
+): LiveBookingRollDraft {
+  return {
+    id: nextRollDraftId(),
+    filmStockId: null,
+    filmStockNameText: '',
+    servicePackageId,
+    scanOptionId: null,
+    exposureCount: 36,
+    shootingIso: 400,
+    pushPullStops: 0,
+  };
+}
+
+export function addBookingRoll(
+  rolls: readonly LiveBookingRollDraft[],
+  defaultPackageId: number | null = null,
+): readonly LiveBookingRollDraft[] {
+  if (rolls.length >= MAX_ROLL_COUNT) {
+    return rolls;
+  }
+  return [...rolls, createBookingRollDraft(defaultPackageId)];
+}
+
+export function duplicateBookingRoll(
+  rolls: readonly LiveBookingRollDraft[],
+  index: number,
+): readonly LiveBookingRollDraft[] {
+  const source = rolls[index];
+  if (!source || rolls.length >= MAX_ROLL_COUNT) {
+    return rolls;
+  }
+  const clone: LiveBookingRollDraft = { ...source, id: nextRollDraftId() };
+  return [...rolls.slice(0, index + 1), clone, ...rolls.slice(index + 1)];
+}
+
+export function removeBookingRoll(
+  rolls: readonly LiveBookingRollDraft[],
+  index: number,
+): readonly LiveBookingRollDraft[] {
+  if (rolls.length <= MIN_ROLL_COUNT || index < 0 || index >= rolls.length) {
+    return rolls;
+  }
+  return rolls.filter((_, idx) => idx !== index);
+}
+
+export function updateBookingRoll(
+  rolls: readonly LiveBookingRollDraft[],
+  index: number,
+  updater: (roll: LiveBookingRollDraft) => LiveBookingRollDraft,
+): readonly LiveBookingRollDraft[] {
+  return rolls.map((roll, idx) => (idx === index ? updater(roll) : roll));
+}
+
+export function resolveRollPackage(
+  lab: PublicFilmLabResponse,
+  rollPackageId: number | null,
+  fallbackPackage: PublicServicePackage | null,
+): PublicServicePackage | null {
+  if (rollPackageId !== null) {
+    const matched = lab.packages.find((pkg) => pkg.id === rollPackageId);
+    if (matched) {
+      return matched;
+    }
+  }
+  if (fallbackPackage && lab.packages.some((pkg) => pkg.id === fallbackPackage.id)) {
+    return fallbackPackage;
+  }
+  return lab.packages[0] ?? null;
+}
+
+export function resolveScanOptionId(
+  pkg: PublicServicePackage,
+  draftScanOptionId: number | null,
+): number | null {
+  if (draftScanOptionId === null) {
+    return null;
+  }
+  return pkg.scanOptions.some((opt) => opt.id === draftScanOptionId) ? draftScanOptionId : null;
+}
 
 const DAY_LABELS: Readonly<Record<number, string>> = {
   1: 'T2',
@@ -133,11 +240,15 @@ export function filterPublicLabSummaries(
 export function buildPublicLabSearchParams({
   processId,
   formatId,
+  serviceTypeId,
+  sort,
   size,
 }: PublicLabSearchInput): PublicFilmLabSearchParams {
   return {
     ...(typeof processId === 'number' && processId > 0 ? { filmProcessId: processId } : {}),
     ...(typeof formatId === 'number' && formatId > 0 ? { filmFormatId: formatId } : {}),
+    ...(typeof serviceTypeId === 'number' && serviceTypeId > 0 ? { serviceTypeId } : {}),
+    ...(sort === 'price' ? { sort: 'price' } : {}),
     ...(size !== undefined ? { size } : {}),
   };
 }
@@ -224,20 +335,23 @@ function trimToOptional(value: string | undefined, maxLength: number): string | 
   return trimmed ? trimmed.slice(0, maxLength) : undefined;
 }
 
-function resolveRollStockSelection(input: LiveBookingInput): {
+function resolveRollStockSelection(roll: {
+  readonly filmStockId?: number | null;
+  readonly filmStockNameText?: string | null;
+}): {
   readonly filmStockId: number | null;
   readonly filmStockNameText: string | null;
 } {
   const validStockId =
-    typeof input.filmStockId === 'number' &&
-    Number.isInteger(input.filmStockId) &&
-    input.filmStockId > 0
-      ? input.filmStockId
+    typeof roll.filmStockId === 'number' &&
+    Number.isInteger(roll.filmStockId) &&
+    roll.filmStockId > 0
+      ? roll.filmStockId
       : null;
   if (validStockId !== null) {
     return { filmStockId: validStockId, filmStockNameText: null };
   }
-  const customName = trimToOptional(input.filmStockNameText ?? undefined, 100) ?? null;
+  const customName = trimToOptional(roll.filmStockNameText ?? undefined, 100) ?? null;
   return { filmStockId: null, filmStockNameText: customName };
 }
 
@@ -261,34 +375,33 @@ function buildPickupFields(input: LiveBookingInput): Partial<CreateServiceOrderR
   };
 }
 
-export function buildLiveOrderPayload(input: LiveBookingInput): CreateServiceOrderRequest {
-  const rollCount = clampRollCount(input.rollCount, 0);
-  const exposureCount = clampExposureCount(input.exposureCount, 0);
-  const shootingIso = clampShootingIso(input.shootingIso);
-  const pushPullStops = clampPushPullStops(input.pushPullStops, 0);
-  const { filmStockId, filmStockNameText } = resolveRollStockSelection(input);
+function toOrderRollPayload(roll: LiveBookingRollInput) {
+  const { filmStockId, filmStockNameText } = resolveRollStockSelection(roll);
   const scanOptionId =
-    typeof input.servicePackageScanOptionId === 'number' && input.servicePackageScanOptionId > 0
-      ? input.servicePackageScanOptionId
+    typeof roll.servicePackageScanOptionId === 'number' && roll.servicePackageScanOptionId > 0
+      ? roll.servicePackageScanOptionId
       : null;
-  const specialRequest = trimToOptional(input.specialRequest, 500);
-
-  const rolls = Array.from({ length: rollCount }, () => ({
+  return {
     filmStockId,
     filmStockNameText,
-    filmFormatId: input.filmFormatId,
-    exposureCount,
-    shootingIso,
-    servicePackageId: input.servicePackageId,
+    filmFormatId: roll.filmFormatId,
+    exposureCount: clampExposureCount(roll.exposureCount, 0),
+    shootingIso: clampShootingIso(roll.shootingIso),
+    servicePackageId: roll.servicePackageId,
     servicePackageScanOptionId: scanOptionId,
-    pushPullStops,
-  }));
+    pushPullStops: clampPushPullStops(roll.pushPullStops, 0),
+  };
+}
+
+export function buildLiveOrderPayload(input: LiveBookingInput): CreateServiceOrderRequest {
+  const specialRequest = trimToOptional(input.specialRequest, 500);
+  const rolls = input.rolls.slice(0, MAX_ROLL_COUNT).map(toOrderRollPayload);
 
   return {
     filmLabId: input.filmLabId,
     serviceTier: ServiceTier.STANDARD,
     filmHandoverMethod: input.filmHandoverMethod,
-    paymentMethod: PaymentMethod.ONLINE,
+    paymentMethod: input.paymentMethod ?? PaymentMethod.PAY_AT_LAB,
     ...(specialRequest ? { specialRequest } : {}),
     ...buildPickupFields(input),
     rolls,

@@ -157,6 +157,9 @@ export const FilmRollResponseSchema = z.object({
   pushPullSurchargeVnd: z.number().int().nonnegative(),
   expressSurchargeVnd: z.number().int().nonnegative(),
   status: z.enum(FilmRollStatus),
+  archiveRollId: PositiveIdSchema.nullable().optional().default(null),
+  previewScanCount: z.number().int().nonnegative().nullable().optional().default(null),
+  fullResolutionLink: z.string().nullable().optional().default(null),
 });
 export type FilmRollResponse = z.infer<typeof FilmRollResponseSchema>;
 
@@ -165,11 +168,11 @@ export const ServiceOrderSummaryResponseSchema = z.object({
   orderCode: z.string().min(1),
   status: z.enum(ServiceOrderStatus),
   filmLabId: PositiveIdSchema,
-  labName: z.string().min(1),
+  labName: z.string().min(1).nullable(),
   rollCount: z.number().int().positive(),
   estimatedTotalVnd: z.number().int().nonnegative(),
   finalTotalVnd: z.number().int().nonnegative().nullable(),
-  expectedReturnAt: IsoTimestampSchema,
+  expectedReturnAt: IsoTimestampSchema.nullable(),
   promisedReturnAt: IsoTimestampSchema.nullable(),
   createdAt: IsoTimestampSchema,
 });
@@ -195,7 +198,7 @@ export const ServiceOrderResponseSchema = z.object({
   pickupWindowStartAt: IsoTimestampSchema.nullable(),
   pickupWindowEndAt: IsoTimestampSchema.nullable(),
   estimatedTotalVnd: z.number().int().nonnegative(),
-  expectedReturnAt: IsoTimestampSchema,
+  expectedReturnAt: IsoTimestampSchema.nullable(),
   labResponseDueAt: IsoTimestampSchema.nullable(),
   rolls: z.array(FilmRollResponseSchema),
   payment: z.unknown().nullable(),
@@ -254,11 +257,15 @@ export const ServiceOrderDetailResponseSchema = z.object({
   estimatedTotalVnd: z.number().int().nonnegative(),
   finalTotalVnd: z.number().int().nonnegative().nullable(),
   priceLockedAt: IsoTimestampSchema.nullable(),
-  expectedReturnAt: IsoTimestampSchema,
+  expectedReturnAt: IsoTimestampSchema.nullable(),
   promisedReturnAt: IsoTimestampSchema.nullable(),
   acceptedAt: IsoTimestampSchema.nullable(),
   deliveredAt: IsoTimestampSchema.nullable(),
   closedAt: IsoTimestampSchema.nullable(),
+  cancelledAt: IsoTimestampSchema.nullable().optional().default(null),
+  cancellationReason: z.string().nullable().optional().default(null),
+  cancellationFeeVnd: z.number().int().nonnegative().nullable().optional().default(null),
+  keepNegativesAtLab: z.boolean().optional().default(false),
   rolls: z.array(FilmRollResponseSchema),
   stages: z.array(OrderStageRecordSchema),
   handovers: z.array(OrderHandoverResponseSchema),
@@ -266,6 +273,11 @@ export const ServiceOrderDetailResponseSchema = z.object({
   createdAt: IsoTimestampSchema,
 });
 export type ServiceOrderDetailResponse = z.infer<typeof ServiceOrderDetailResponseSchema>;
+
+export const CancelServiceOrderRequestSchema = z.object({
+  reason: z.string().trim().min(10).max(500),
+});
+export type CancelServiceOrderRequest = z.infer<typeof CancelServiceOrderRequestSchema>;
 
 export const ScheduleChangeAnswerRequestSchema = z.object({
   choice: z.enum(ScheduleChangeChoice),

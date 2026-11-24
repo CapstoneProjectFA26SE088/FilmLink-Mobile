@@ -9,6 +9,7 @@ import {
   validateOtpCode,
 } from '@/shared/domain';
 import { useCountdown } from '@/shared/hooks';
+import { firstRouteParam, type RawRouteParam } from '@/shared/lib';
 import {
   Alert,
   type AlertTone,
@@ -95,12 +96,16 @@ function VerifyOtpHeader({
 
 export function VerifyOtpScreen() {
   const params = useLocalSearchParams<{
-    email?: string;
-    fullName?: string;
-    purpose?: OtpPurpose;
+    email?: RawRouteParam;
+    fullName?: RawRouteParam;
+    purpose?: RawRouteParam;
   }>();
-  const email = params.email ?? 'photographer@filmlink.vn';
-  const purpose = params.purpose ?? OtpPurpose.EMAIL_VERIFICATION;
+  const email = firstRouteParam(params.email) ?? 'photographer@filmlink.vn';
+  const rawPurpose = firstRouteParam(params.purpose);
+  const purpose =
+    rawPurpose === OtpPurpose.PASSWORD_RESET
+      ? OtpPurpose.PASSWORD_RESET
+      : OtpPurpose.EMAIL_VERIFICATION;
   const isPasswordReset = purpose === OtpPurpose.PASSWORD_RESET;
 
   const [otp, setOtp] = useState('');
@@ -155,7 +160,11 @@ export function VerifyOtpScreen() {
     setError(null);
     setNotice(null);
     try {
-      await filmLinkApi.resendOtp({ email, purpose });
+      if (isPasswordReset) {
+        await filmLinkApi.forgotPassword({ email });
+      } else {
+        await filmLinkApi.resendOtp({ email, purpose });
+      }
       restartResend(OTP_COOLDOWN_SECONDS);
       restartExpiry(OTP_EXPIRY_SECONDS);
       setAttempts(0);

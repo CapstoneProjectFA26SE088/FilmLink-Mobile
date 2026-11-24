@@ -8,10 +8,10 @@ import {
   draftStore,
   Role,
   setAuthUser,
-  switchUserRole,
   updateProfile,
   validateProfileFullName,
 } from '@/shared/domain';
+import { raceTimeout } from '@/shared/hooks';
 import { useStore } from '@/shared/lib';
 import { useTheme } from '@/shared/theme';
 import {
@@ -71,7 +71,9 @@ export function ProfileScreen() {
     try {
       const session = sessionManager.getSession();
       if (session?.refreshToken) {
-        await filmLinkApi.logout({ refreshToken: session.refreshToken }).catch(() => undefined);
+        await raceTimeout(filmLinkApi.logout({ refreshToken: session.refreshToken }), 3_000).catch(
+          () => undefined,
+        );
       }
       await sessionManager.endSession('signed-out');
       draftStore.reset();
@@ -116,28 +118,15 @@ export function ProfileScreen() {
               onChange={setPreference}
             />
 
-            <HStack gap="xs">
+            {!isExpert ? (
               <Button
-                testID="profile.role-toggle"
-                label={isExpert ? 'Về Photographer' : 'Chuyển Expert Demo'}
+                testID="profile.open-upgrade"
+                label="Nâng cấp Chuyên gia"
                 size="sm"
-                variant="outline"
-                className="flex-1"
-                onPress={() =>
-                  switchUserRole(isExpert ? Role.PHOTOGRAPHER : Role.PHOTOGRAPHY_EXPERT)
-                }
+                variant="secondary"
+                onPress={() => router.push('/(modals)/expert-upgrade')}
               />
-              {!isExpert ? (
-                <Button
-                  testID="profile.open-upgrade"
-                  label="Nâng cấp UC11"
-                  size="sm"
-                  variant="secondary"
-                  className="flex-1"
-                  onPress={() => router.push('/(modals)/expert-upgrade')}
-                />
-              ) : null}
-            </HStack>
+            ) : null}
           </VStack>
         </Card>
 

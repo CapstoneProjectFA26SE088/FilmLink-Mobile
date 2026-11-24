@@ -1,3 +1,4 @@
+export { raceTimeout } from './timeout';
 export { useCountdown } from './useCountdown';
 export {
   DEFAULT_DRAFT_DEBOUNCE_MS,

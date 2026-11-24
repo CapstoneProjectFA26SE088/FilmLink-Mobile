@@ -12,5 +12,5 @@ export const MAX_SHOOTING_ISO = 12_800;
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 72;
 export const VN_PHONE_REGEX = /^(0|\+84)\d{9,10}$/;
-export const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
+export const PASSWORD_COMPLEXITY_REGEX = /^(?=.*\p{L})(?=.*\d).{8,72}$/u;
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

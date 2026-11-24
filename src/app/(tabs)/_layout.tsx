@@ -5,9 +5,10 @@ import { aiTabScreenOptions, tabScreenOptions, useTabScreenTheme } from '@/share
 
 export default function TabsLayout() {
   const isExpert = useStore(authStore, (s) => s.user?.role === Role.PHOTOGRAPHY_EXPERT);
+  const screenOptions = useTabScreenTheme();
 
   return (
-    <Tabs screenOptions={useTabScreenTheme()}>
+    <Tabs screenOptions={screenOptions}>
       <Tabs.Screen name="index" options={tabScreenOptions('Trang chủ', 'home-outline')} />
       <Tabs.Screen name="services" options={tabScreenOptions('Dịch vụ', 'color-filter-outline')} />
       <Tabs.Screen name="orders" options={tabScreenOptions('Đơn hàng', 'receipt-outline')} />

@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openURL } from 'expo-linking';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   type FilmRollResponse,
@@ -25,16 +26,20 @@ import {
   Card,
   HStack,
   Icon,
+  Input,
   MediaImage,
   Text,
   VStack,
 } from '@/shared/ui';
 import {
   buildOrderStageTimeline,
+  canCancelOrder,
+  canConfirmReceiptOrder,
   computeOrderProgressPct,
   isSignedUrlExpiredError,
   mapOrderApiError,
   type OrderStageTimelineItem,
+  validateCancelReason,
 } from '../model/orders';
 
 function resolveStatusBadgeTone(status: ServiceOrderStatus): BadgeTone {
@@ -106,19 +111,36 @@ function OrderRollsSection({ rolls }: { readonly rolls: readonly FilmRollRespons
           const stockLabel = roll.filmStockNameText ?? `Danh mục #${roll.filmStockId ?? '-'}`;
           const stopsLabel =
             roll.pushPullStops > 0 ? `+${roll.pushPullStops}` : String(roll.pushPullStops);
+          const archiveRollId = roll.archiveRollId;
           return (
-            <HStack key={roll.id} justify="between" align="center" gap="sm">
-              <VStack gap="none" className="flex-1">
-                <Text variant="caption">
-                  Cuộn #{roll.rollSequence} · {stockLabel}
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {roll.exposureCount} kiểu · ISO {roll.shootingIso ?? 'Mặc định'} · Push/Pull{' '}
-                  {stopsLabel}
-                </Text>
-              </VStack>
-              <Badge label={FILM_ROLL_STATUS_LABELS[roll.status]} tone="neutral" />
-            </HStack>
+            <VStack key={roll.id} gap="xs">
+              <HStack justify="between" align="center" gap="sm">
+                <VStack gap="none" className="flex-1">
+                  <Text variant="caption">
+                    Cuộn #{roll.rollSequence} · {stockLabel}
+                  </Text>
+                  <Text variant="caption" tone="muted">
+                    {roll.exposureCount} kiểu · ISO {roll.shootingIso ?? 'Mặc định'} · Push/Pull{' '}
+                    {stopsLabel}
+                  </Text>
+                </VStack>
+                <Badge label={FILM_ROLL_STATUS_LABELS[roll.status]} tone="neutral" />
+              </HStack>
+              {archiveRollId !== null ? (
+                <Button
+                  testID={`orders.roll-archive.${archiveRollId}`}
+                  label="Mở Lưu trữ số cuộn này"
+                  size="sm"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/archive/[archiveRollId]',
+                      params: { archiveRollId: String(archiveRollId) },
+                    })
+                  }
+                />
+              ) : null}
+            </VStack>
           );
         })}
       </VStack>
@@ -201,6 +223,20 @@ function OrderDetailContent({
         <Text variant="secondary">Tiến độ xử lý</Text>
         <Badge label={`${progressPct}%`} tone={progressPct === 100 ? 'success' : 'info'} />
       </HStack>
+      {detail.keepNegativesAtLab ? (
+        <Alert
+          testID={`orders.keep-negatives.${orderId}`}
+          tone="info"
+          message="Đơn này chọn để Lab lưu giữ âm bản vật lý."
+        />
+      ) : null}
+      {detail.cancellationReason ? (
+        <Alert
+          testID={`orders.cancel-reason-note.${orderId}`}
+          tone="warning"
+          message={`Lý do hủy: ${detail.cancellationReason}`}
+        />
+      ) : null}
       <OrderTimelineSection timeline={timeline} />
       <OrderRollsSection rolls={detail.rolls} />
       <OrderHandoversSection
@@ -268,6 +304,135 @@ function OrderPaymentSection({
   );
 }
 
+function OrderConfirmReceiptSection({ orderId }: { readonly orderId: number }) {
+  const queryClient = useQueryClient();
+  const confirmMutation = useMutation({
+    mutationFn: () => filmLinkApi.confirmServiceOrderReceipt(orderId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: filmLinkQueryKeys.orders.all });
+      await queryClient.invalidateQueries({ queryKey: filmLinkQueryKeys.archive.all });
+    },
+  });
+
+  return (
+    <VStack gap="xs">
+      <Button
+        testID={`orders.confirm-receipt.${orderId}`}
+        label={confirmMutation.isPending ? 'Đang xác nhận...' : 'Xác nhận đã nhận phim'}
+        size="sm"
+        variant="primary"
+        loading={confirmMutation.isPending}
+        onPress={() => {
+          void confirmMutation.mutateAsync().catch(() => undefined);
+        }}
+      />
+      {confirmMutation.isError ? (
+        <Alert
+          testID={`orders.confirm-error.${orderId}`}
+          tone="danger"
+          message={mapOrderApiError(confirmMutation.error)}
+        />
+      ) : null}
+    </VStack>
+  );
+}
+
+function OrderCancelSection({
+  orderId,
+  isOpen,
+  reason,
+  onOpen,
+  onClose,
+  onChangeReason,
+  onSuccess,
+}: {
+  readonly orderId: number;
+  readonly isOpen: boolean;
+  readonly reason: string;
+  readonly onOpen: () => void;
+  readonly onClose: () => void;
+  readonly onChangeReason: (text: string) => void;
+  readonly onSuccess: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const cancelMutation = useMutation({
+    mutationFn: (trimmedReason: string) =>
+      filmLinkApi.cancelServiceOrder(orderId, { reason: trimmedReason }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: filmLinkQueryKeys.orders.all });
+      onSuccess();
+    },
+  });
+
+  if (!isOpen) {
+    return (
+      <Button
+        testID={`orders.cancel-open.${orderId}`}
+        label="Hủy đơn hàng"
+        size="sm"
+        variant="outline"
+        onPress={() => {
+          setValidationError(null);
+          onOpen();
+        }}
+      />
+    );
+  }
+
+  const handleConfirmCancel = async () => {
+    const err = validateCancelReason(reason);
+    if (err) {
+      setValidationError(err);
+      return;
+    }
+    setValidationError(null);
+    await cancelMutation.mutateAsync(reason.trim()).catch(() => undefined);
+  };
+
+  const errorText =
+    validationError ?? (cancelMutation.isError ? mapOrderApiError(cancelMutation.error) : null);
+
+  return (
+    <Card tone="muted">
+      <VStack gap="sm">
+        <Input
+          testID={`orders.cancel-reason.${orderId}`}
+          label="Lý do hủy đơn (10–500 ký tự)"
+          value={reason}
+          onChangeText={(text) => {
+            setValidationError(null);
+            onChangeReason(text);
+          }}
+          placeholder="Ví dụ: Đổi lịch công tác nên chưa gửi cuộn phim tới Lab kịp."
+          multiline
+        />
+        {errorText ? (
+          <Alert testID={`orders.cancel-error.${orderId}`} tone="danger" message={errorText} />
+        ) : null}
+        <HStack gap="xs">
+          <Button
+            testID={`orders.cancel-submit.${orderId}`}
+            label={cancelMutation.isPending ? 'Đang hủy...' : 'Xác nhận hủy'}
+            size="sm"
+            variant="danger"
+            className="flex-1"
+            loading={cancelMutation.isPending}
+            onPress={() => void handleConfirmCancel()}
+          />
+          <Button
+            testID={`orders.cancel-close.${orderId}`}
+            label="Đóng"
+            size="sm"
+            variant="ghost"
+            onPress={onClose}
+          />
+        </HStack>
+      </VStack>
+    </Card>
+  );
+}
+
 function OrderExpandedSection({
   orderId,
   isLoading,
@@ -315,9 +480,21 @@ function OrderExpandedSection({
 export function OrderCardSection({
   order,
   defaultExpanded,
+  isCancelOpen,
+  cancelReason,
+  onOpenCancel,
+  onCloseCancel,
+  onChangeCancelReason,
+  onCancelSuccess,
 }: {
   readonly order: ServiceOrderSummaryResponse;
   readonly defaultExpanded: boolean;
+  readonly isCancelOpen: boolean;
+  readonly cancelReason: string;
+  readonly onOpenCancel: (orderId: number) => void;
+  readonly onCloseCancel: () => void;
+  readonly onChangeCancelReason: (reason: string) => void;
+  readonly onCancelSuccess: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
@@ -339,7 +516,7 @@ export function OrderCardSection({
           <VStack gap="none" className="flex-1">
             <Text variant="heading">{order.orderCode}</Text>
             <Text variant="caption" tone="muted">
-              {order.labName} · {order.rollCount} cuộn phim
+              {order.labName ?? 'Phòng Lab đối tác'} · {order.rollCount} cuộn phim
             </Text>
           </VStack>
           <Badge
@@ -350,7 +527,7 @@ export function OrderCardSection({
 
         <HStack justify="between" align="center">
           <Text variant="caption" tone="secondary">
-            Hẹn trả {formatDateVn(returnAt)}
+            {returnAt ? `Hẹn trả ${formatDateVn(returnAt)}` : 'Chờ lịch hẹn trả'}
           </Text>
           <Text variant="secondary" tone="brand">
             {formatVnd(displayAmount)}
@@ -364,6 +541,22 @@ export function OrderCardSection({
             paymentNotice={paymentNotice}
             onResetNotice={() => setPaymentNotice(null)}
             onPaySuccess={() => setPaymentNotice('Đã mở cổng thanh toán VNPay Sandbox.')}
+          />
+        ) : null}
+
+        {canConfirmReceiptOrder(order.status) ? (
+          <OrderConfirmReceiptSection orderId={order.id} />
+        ) : null}
+
+        {canCancelOrder(order.status) ? (
+          <OrderCancelSection
+            orderId={order.id}
+            isOpen={isCancelOpen}
+            reason={cancelReason}
+            onOpen={() => onOpenCancel(order.id)}
+            onClose={onCloseCancel}
+            onChangeReason={onChangeCancelReason}
+            onSuccess={onCancelSuccess}
           />
         ) : null}
 

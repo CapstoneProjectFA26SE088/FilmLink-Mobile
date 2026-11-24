@@ -5,10 +5,19 @@ export const LabSelectionDraftSchema = z.object({
   search: z.string(),
   processId: z.union([z.literal('ALL'), z.number().int().positive()]),
   formatId: z.union([z.literal('ALL'), z.number().int().positive()]),
+  serviceTypeId: z.union([z.literal('ALL'), z.number().int().positive()]).default('ALL'),
+  sort: z.enum(['default', 'price']).default('default'),
   selectedLabId: z.number().int().positive().nullable(),
 });
 
 export type LabSelectionDraft = z.infer<typeof LabSelectionDraftSchema>;
+
+export const OrderActionDraftSchema = z.object({
+  activeOrderId: z.number().int().positive().nullable(),
+  cancelReason: z.string(),
+});
+
+export type OrderActionDraft = z.infer<typeof OrderActionDraftSchema>;
 
 export const ConsignmentDraftSchema = z.object({
   title: z.string(),
@@ -40,9 +49,8 @@ export const ExpertUpgradeDraftSchema = z.object({
 export type ExpertUpgradeDraft = z.infer<typeof ExpertUpgradeDraftSchema>;
 
 export const AiAdvisorDraftSchema = z.object({
-  mode: z.enum(['chat', 'diagnostics']),
+  sessionId: z.number().int().positive().nullable(),
   prompt: z.string(),
-  frameText: z.string(),
 });
 
 export type AiAdvisorDraft = z.infer<typeof AiAdvisorDraftSchema>;

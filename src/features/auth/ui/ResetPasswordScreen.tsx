@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { filmLinkApi } from '@/shared/api';
+import { firstRouteParam, type RawRouteParam } from '@/shared/lib';
 import {
   Alert,
   Badge,
@@ -52,8 +53,8 @@ function ResetPasswordHeader({ email }: { readonly email: string }) {
 }
 
 export function ResetPasswordScreen() {
-  const params = useLocalSearchParams<{ email?: string; resetToken?: string }>();
-  const email = params.email ?? 'tài khoản của bạn';
+  const params = useLocalSearchParams<{ email?: RawRouteParam; resetToken?: RawRouteParam }>();
+  const email = firstRouteParam(params.email) ?? 'tài khoản của bạn';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function ResetPasswordScreen() {
       setError(validationError);
       return;
     }
-    const token = params.resetToken;
+    const token = firstRouteParam(params.resetToken);
     if (!token) {
       setError('Mã xác thực đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
       return;

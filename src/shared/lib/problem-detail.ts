@@ -1,6 +1,15 @@
+import { ZodError } from 'zod';
+
 export type ProblemFieldError = {
   readonly field: string;
   readonly message: string;
+};
+
+export type ArchiveIncompleteRollInfo = {
+  readonly filmRollId: number;
+  readonly rollSequence: number;
+  readonly missingPreviewScan: boolean;
+  readonly missingFullResolutionLink: boolean;
 };
 
 export type ProblemDetail = {
@@ -12,6 +21,23 @@ export type ProblemDetail = {
   readonly errorCode?: string;
   readonly messageCode?: string;
   readonly errors?: readonly ProblemFieldError[];
+  readonly lockReason?: string;
+  readonly currentVersion?: number;
+  readonly submittedVersion?: number;
+  readonly limit?: number;
+  readonly missing?: readonly string[];
+  readonly incompleteRolls?: readonly ArchiveIncompleteRollInfo[];
+  readonly proposedPromisedReturnAt?: string;
+  readonly currentStage?: string;
+  readonly expectedStage?: string;
+  readonly missingFilmRollIds?: readonly number[];
+  readonly duplicateFilmRollIds?: readonly number[];
+  readonly unknownFilmRollIds?: readonly number[];
+  readonly field?: string;
+  readonly value?: string;
+  readonly position?: number;
+  readonly min?: number;
+  readonly max?: number;
 };
 
 export type ApiProblemDetail = ProblemDetail;
@@ -62,6 +88,59 @@ function readOptionalString(record: Record<string, unknown>, key: string): strin
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+function readOptionalNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function readOptionalStringArray(
+  record: Record<string, unknown>,
+  key: string,
+): readonly string[] | undefined {
+  const value = record[key];
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value.filter((item): item is string => typeof item === 'string');
+  return items.length > 0 ? items : undefined;
+}
+
+function readOptionalNumberArray(
+  record: Record<string, unknown>,
+  key: string,
+): readonly number[] | undefined {
+  const value = record[key];
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value.filter((item): item is number => typeof item === 'number');
+  return items.length > 0 ? items : undefined;
+}
+
+function readIncompleteRolls(value: unknown): readonly ArchiveIncompleteRollInfo[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value.flatMap((item): ArchiveIncompleteRollInfo[] => {
+    if (!item || typeof item !== 'object') {
+      return [];
+    }
+    const r = item as Record<string, unknown>;
+    if (typeof r.filmRollId !== 'number' || typeof r.rollSequence !== 'number') {
+      return [];
+    }
+    return [
+      {
+        filmRollId: r.filmRollId,
+        rollSequence: r.rollSequence,
+        missingPreviewScan: Boolean(r.missingPreviewScan),
+        missingFullResolutionLink: Boolean(r.missingFullResolutionLink),
+      },
+    ];
+  });
+  return items.length > 0 ? items : undefined;
+}
+
 export function parseFieldErrors(value: unknown): readonly ProblemFieldError[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
@@ -107,6 +186,23 @@ export function toProblemDetail(
     errorCode: readOptionalString(record, 'errorCode') ?? `HTTP_${status}`,
     messageCode: readOptionalString(record, 'messageCode'),
     errors: parseFieldErrors(record.errors),
+    lockReason: readOptionalString(record, 'lockReason'),
+    currentVersion: readOptionalNumber(record, 'currentVersion'),
+    submittedVersion: readOptionalNumber(record, 'submittedVersion'),
+    limit: readOptionalNumber(record, 'limit'),
+    missing: readOptionalStringArray(record, 'missing'),
+    incompleteRolls: readIncompleteRolls(record.incompleteRolls),
+    proposedPromisedReturnAt: readOptionalString(record, 'proposedPromisedReturnAt'),
+    currentStage: readOptionalString(record, 'currentStage'),
+    expectedStage: readOptionalString(record, 'expectedStage'),
+    missingFilmRollIds: readOptionalNumberArray(record, 'missingFilmRollIds'),
+    duplicateFilmRollIds: readOptionalNumberArray(record, 'duplicateFilmRollIds'),
+    unknownFilmRollIds: readOptionalNumberArray(record, 'unknownFilmRollIds'),
+    field: readOptionalString(record, 'field'),
+    value: readOptionalString(record, 'value'),
+    position: readOptionalNumber(record, 'position'),
+    min: readOptionalNumber(record, 'min'),
+    max: readOptionalNumber(record, 'max'),
   });
 }
 
@@ -152,6 +248,21 @@ function normalizeRecordError(
   };
 }
 
+function normalizeZodError(error: ZodError, fallbackMessage: string): ProblemDetail {
+  const errors: ProblemFieldError[] = error.issues
+    .filter((issue) => issue.message.length > 0)
+    .map((issue) => ({
+      field: issue.path[0] !== undefined ? String(issue.path[0]) : 'form',
+      message: issue.message,
+    }));
+  return {
+    status: 400,
+    detail: errors[0]?.message ?? fallbackMessage,
+    errorCode: 'CLIENT_VALIDATION_ERROR',
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
 export function normalizeProblemDetail(
   error: unknown,
   fallbackMessage = DEFAULT_NETWORK_MESSAGE,
@@ -162,6 +273,10 @@ export function normalizeProblemDetail(
 
   if (isProblemDetail(error)) {
     return error;
+  }
+
+  if (error instanceof ZodError) {
+    return normalizeZodError(error, fallbackMessage);
   }
 
   if (error instanceof Error) {

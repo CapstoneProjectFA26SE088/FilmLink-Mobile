@@ -13,7 +13,6 @@ import {
   checkRoleCapabilities,
   Role,
   SERVICE_ORDER_STATUS_LABELS,
-  switchUserRole,
 } from '@/shared/domain';
 import { formatVnd, useStore } from '@/shared/lib';
 import { Alert, Badge, Button, Card, HStack, Icon, Screen, Text, VStack } from '@/shared/ui';
@@ -49,13 +48,7 @@ function HomeHeader({
   );
 }
 
-function HomeRoleCard({
-  isExpert,
-  onToggleRole,
-}: {
-  readonly isExpert: boolean;
-  readonly onToggleRole: () => void;
-}) {
+function HomeRoleCard({ isExpert }: { readonly isExpert: boolean }) {
   return (
     <Card tone={isExpert ? 'brand' : 'muted'}>
       <VStack gap="sm">
@@ -70,13 +63,6 @@ function HomeRoleCard({
                 tone={isExpert ? 'brand' : 'secondary'}
               />
             }
-          />
-          <Button
-            testID="home.toggle-role"
-            label={isExpert ? 'Về Nhiếp ảnh gia' : 'Trải nghiệm Chuyên gia'}
-            variant="outline"
-            size="sm"
-            onPress={onToggleRole}
           />
         </HStack>
         <Text variant="heading">
@@ -188,7 +174,7 @@ function HomeFeaturedLabCard({
             <Text variant="heading">{lab.labName}</Text>
             <Icon name="checkmark-circle" size="xs" tone="brand" />
           </HStack>
-          {lab.distanceKm !== null ? (
+          {lab.distanceKm != null ? (
             <Badge label={`${lab.distanceKm.toFixed(1)} km`} tone="info" />
           ) : null}
         </HStack>
@@ -239,10 +225,6 @@ export function HomeScreen() {
   const isLoading = labsQuery.isLoading || (isAuthenticated && ordersQuery.isLoading);
   const activeError = labsQuery.error ?? ordersQuery.error;
 
-  const handleToggleRole = () => {
-    switchUserRole(isExpert ? Role.PHOTOGRAPHER : Role.PHOTOGRAPHY_EXPERT);
-  };
-
   const handleQuickBookLab = (labId: number) => {
     router.push({ pathname: '/(tabs)/services', params: { tab: 'booking', labId: String(labId) } });
   };
@@ -260,7 +242,7 @@ export function HomeScreen() {
     <Screen testID="home.screen" scroll edges="top">
       <VStack gap="md">
         <HomeHeader firstName={firstName} isExpert={isExpert} />
-        <HomeRoleCard isExpert={isExpert} onToggleRole={handleToggleRole} />
+        <HomeRoleCard isExpert={isExpert} />
         <HomeOrderMetricsRow
           activeOrdersCount={activeOrdersCount}
           completedOrdersCount={completedOrdersCount}
