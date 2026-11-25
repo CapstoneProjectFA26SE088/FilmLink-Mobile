@@ -11,14 +11,20 @@ export default function TabsLayout() {
     <Tabs screenOptions={screenOptions}>
       <Tabs.Screen name="index" options={tabScreenOptions('Trang chủ', 'home-outline')} />
       <Tabs.Screen name="services" options={tabScreenOptions('Dịch vụ', 'color-filter-outline')} />
-      <Tabs.Screen name="orders" options={tabScreenOptions('Đơn hàng', 'receipt-outline')} />
       <Tabs.Screen name="ai" options={aiTabScreenOptions()} />
-      <Tabs.Screen name="marketplace" options={tabScreenOptions('Chợ phim', 'pricetag-outline')} />
-      <Tabs.Screen name="community" options={tabScreenOptions('Cộng đồng', 'people-outline')} />
+      <Tabs.Screen name="orders" options={tabScreenOptions('Đơn hàng', 'receipt-outline')} />
       <Tabs.Screen name="profile" options={tabScreenOptions('Hồ sơ', 'person-outline')} />
       <Tabs.Screen
         name="expert"
         options={tabScreenOptions('Chuyên gia', 'sparkles-outline', isExpert ? undefined : null)}
+      />
+      <Tabs.Screen
+        name="marketplace"
+        options={tabScreenOptions('Chợ phim', 'pricetag-outline', null)}
+      />
+      <Tabs.Screen
+        name="community"
+        options={tabScreenOptions('Cộng đồng', 'people-outline', null)}
       />
     </Tabs>
   );
