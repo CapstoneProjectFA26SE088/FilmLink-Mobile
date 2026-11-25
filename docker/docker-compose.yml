@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg19
+    container_name: filmlink-mobile-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-11111111}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - filmlink_mobile_pgdata:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+    restart: unless-stopped
+
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-11111111}
+      DB_SCHEMA: ${DB_SCHEMA:-filmlink_local}
+      DB_TEST_SCHEMA: ${DB_TEST_SCHEMA:-filmlink_test}
+    volumes:
+      - ${BE_MIGRATIONS_DIR:-../../BE/FA26SE088-backend/src/main/resources/db/migration}:/flyway/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  db-seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.seed
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-11111111}
+      DB_SCHEMA: ${DB_SCHEMA:-filmlink_local}
+      SEED_UPLOADS_TARGET: /uploads
+    volumes:
+      - ${SEED_UPLOADS_DIR:-./uploads}:/uploads
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  db-reset:
+    image: pgvector/pgvector:pg19
+    profiles: ["reset"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-11111111}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        psql -h postgres -p 5432 -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS ${DB_SCHEMA:-filmlink_local} CASCADE; CREATE SCHEMA ${DB_SCHEMA:-filmlink_local}; CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;"
+        echo "Schema ${DB_SCHEMA:-filmlink_local} reset cleanly."
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  filmlink_mobile_pgdata:

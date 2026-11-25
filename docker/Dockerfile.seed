@@ -1,0 +1,10 @@
+FROM pgvector/pgvector:pg19
+
+COPY scripts/seed-entrypoint.sh /usr/local/bin/seed-entrypoint.sh
+COPY scripts/generate-sample-uploads.sh /usr/local/bin/generate-sample-uploads.sh
+COPY seed/ /seed/
+
+RUN sed -i 's/\r$//' /usr/local/bin/seed-entrypoint.sh /usr/local/bin/generate-sample-uploads.sh /seed/*.sql \
+    && chmod +x /usr/local/bin/seed-entrypoint.sh /usr/local/bin/generate-sample-uploads.sh
+
+ENTRYPOINT ["/usr/local/bin/seed-entrypoint.sh"]

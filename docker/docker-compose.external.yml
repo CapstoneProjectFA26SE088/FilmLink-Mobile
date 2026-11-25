@@ -1,0 +1,56 @@
+# Use this Compose file when you already run your own PostgreSQL container
+# (e.g., filmlink-postgres on localhost:5432) so no second postgres container is started.
+services:
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DB_HOST: ${EXTERNAL_DB_HOST:-host.docker.internal}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-11111111}
+      DB_SCHEMA: ${DB_SCHEMA:-filmlink_local}
+      DB_TEST_SCHEMA: ${DB_TEST_SCHEMA:-filmlink_test}
+    volumes:
+      - ${BE_MIGRATIONS_DIR:-../../BE/FA26SE088-backend/src/main/resources/db/migration}:/flyway/sql:ro
+    restart: "no"
+
+  db-seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.seed
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DB_HOST: ${EXTERNAL_DB_HOST:-host.docker.internal}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-11111111}
+      DB_SCHEMA: ${DB_SCHEMA:-filmlink_local}
+      SEED_UPLOADS_TARGET: /uploads
+    volumes:
+      - ${SEED_UPLOADS_DIR:-./uploads}:/uploads
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  db-reset:
+    image: pgvector/pgvector:pg19
+    profiles: ["reset"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-11111111}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        psql -h "${EXTERNAL_DB_HOST:-host.docker.internal}" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS ${DB_SCHEMA:-filmlink_local} CASCADE; CREATE SCHEMA ${DB_SCHEMA:-filmlink_local}; CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;"
+        echo "External schema ${DB_SCHEMA:-filmlink_local} reset cleanly."
+    restart: "no"
