@@ -10,4 +10,8 @@ export {
   mapChatbotApiError,
   validateChatbotQuestion,
 } from './model/ai-advisor';
-export { AiAdvisorScreen } from './ui/AiAdvisorScreen';
+export {
+  type AiAdvisorMode,
+  AiAdvisorScreen,
+  type AiAdvisorScreenProps,
+} from './ui/AiAdvisorScreen';

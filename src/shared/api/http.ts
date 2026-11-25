@@ -27,6 +27,7 @@ export type MultipartFile = {
   readonly uri: string;
   readonly name: string;
   readonly type: string;
+  readonly blob?: Blob;
 };
 
 export type MultipartParts = {
@@ -129,11 +130,15 @@ export function buildMultipartFormData(
     formData.append('data', jsonPart);
   }
   for (const file of parts.files ?? []) {
-    formData.append(file.field, {
-      uri: file.uri,
-      name: file.name,
-      type: file.type,
-    } as unknown as Blob);
+    if (platform === 'web' && file.blob !== undefined) {
+      formData.append(file.field, file.blob, file.name);
+    } else {
+      formData.append(file.field, {
+        uri: file.uri,
+        name: file.name,
+        type: file.type,
+      } as unknown as Blob);
+    }
   }
   return formData;
 }

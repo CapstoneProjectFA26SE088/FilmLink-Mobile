@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HandoverMethod, PaymentMethod } from '../enums';
 
 export const LabSelectionDraftSchema = z.object({
   activeTab: z.enum(['directory', 'booking']),
@@ -54,3 +55,33 @@ export const AiAdvisorDraftSchema = z.object({
 });
 
 export type AiAdvisorDraft = z.infer<typeof AiAdvisorDraftSchema>;
+
+export const NegativePreviewDraftSchema = z.object({
+  sessionId: z.number().int().positive().nullable(),
+  sourceType: z.enum(['UPLOADED_NEGATIVE', 'ARCHIVE_SCAN_FILE']),
+  scanFileId: z.number().int().positive().nullable(),
+  localFileUri: z.string().nullable(),
+  localFileName: z.string().nullable(),
+  localFileMimeType: z.enum(['image/jpeg', 'image/png']).nullable(),
+  localFileSizeBytes: z.number().int().nonnegative().nullable(),
+  intentPrompt: z.string(),
+  selectedStyleCode: z.string().nullable(),
+});
+
+export type NegativePreviewDraft = z.infer<typeof NegativePreviewDraftSchema>;
+
+export const PrintOrderDraftSchema = z.object({
+  sessionId: z.number().int().positive().nullable(),
+  filmLabId: z.number().int().positive().nullable(),
+  printSizeId: z.number().int().positive().nullable(),
+  quantity: z.number().int().min(1).max(500),
+  filmHandoverMethod: z.enum(HandoverMethod),
+  paymentMethod: z.enum([PaymentMethod.PAY_AT_LAB, PaymentMethod.ONLINE]),
+  customerAddressLine: z.string(),
+  customerDistrict: z.string(),
+  customerProvince: z.string(),
+  customerPhone: z.string(),
+  note: z.string(),
+});
+
+export type PrintOrderDraft = z.infer<typeof PrintOrderDraftSchema>;

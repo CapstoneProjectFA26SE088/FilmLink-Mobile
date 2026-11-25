@@ -1,5 +1,6 @@
 import type {
   ChatbotMessagesParams,
+  NegativePreviewSessionListParams,
   PublicFilmLabSearchParams,
   SearchFilmArchiveParams,
   ServiceOrderListParams,
@@ -27,6 +28,7 @@ export const filmLinkQueryKeys = {
     processes: () => ['catalogs', 'processes'] as const,
     serviceTypes: () => ['catalogs', 'service-types'] as const,
     stocks: (q?: string) => ['catalogs', 'stocks', (q ?? '').trim().toLowerCase()] as const,
+    printSizes: () => ['catalogs', 'print-sizes'] as const,
   },
   chatbot: {
     all: ['chatbot'] as const,
@@ -37,6 +39,13 @@ export const filmLinkQueryKeys = {
     all: ['labs'] as const,
     list: (params?: PublicFilmLabSearchParams) => ['labs', 'list', params ?? {}] as const,
     detail: (labId: number) => ['labs', 'detail', labId] as const,
+    printPrices: (labId: number) => ['labs', 'print-prices', labId] as const,
+  },
+  negativePreview: {
+    all: ['negative-preview'] as const,
+    sessions: (params?: NegativePreviewSessionListParams) =>
+      ['negative-preview', 'sessions', params ?? {}] as const,
+    session: (sessionId: number) => ['negative-preview', 'session', sessionId] as const,
   },
   orders: {
     all: ['orders'] as const,

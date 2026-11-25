@@ -10,6 +10,8 @@ export const DRAFT_FLOW_KEYS = [
   'community_draft',
   'expert_draft',
   'ai_advisor_draft',
+  'negative_preview',
+  'print_order',
 ] as const;
 
 export type DraftFlowKey = (typeof DRAFT_FLOW_KEYS)[number];

@@ -7,6 +7,7 @@ import {
   filmLinkApi,
   filmLinkQueryKeys,
   type OrderHandoverResponse,
+  type OrderPrintLineResponse,
   type ServiceOrderDetailResponse,
   type ServiceOrderSummaryResponse,
   SIGNED_URL_STALE_TIME_MS,
@@ -16,6 +17,7 @@ import {
   HANDOVER_POINT_LABELS,
   SERVICE_ORDER_STATUS_LABELS,
   ServiceOrderStatus,
+  ServiceOrderType,
 } from '@/shared/domain';
 import { formatDateTimeVn, formatDateVn, formatVnd } from '@/shared/lib';
 import {
@@ -56,6 +58,15 @@ function resolveStatusBadgeTone(status: ServiceOrderStatus): BadgeTone {
     return 'warning';
   }
   return 'brand';
+}
+
+function formatOrderItemsSummary(order: ServiceOrderSummaryResponse): string {
+  if (order.orderType === ServiceOrderType.AI_PREVIEW_PRINT || order.rollCount === 0) {
+    return order.printLineCount > 0
+      ? `Đơn in ảnh từ Dương bản AI · ${order.printLineCount} hạng mục in`
+      : 'Đơn in ảnh từ Dương bản AI';
+  }
+  return `${order.rollCount} cuộn phim`;
 }
 
 function OrderTimelineSection({
@@ -143,6 +154,43 @@ function OrderRollsSection({ rolls }: { readonly rolls: readonly FilmRollRespons
             </VStack>
           );
         })}
+      </VStack>
+    </Card>
+  );
+}
+
+function OrderPrintLinesSection({
+  printLines,
+}: {
+  readonly printLines: readonly OrderPrintLineResponse[];
+}) {
+  if (printLines.length === 0) {
+    return null;
+  }
+  return (
+    <Card tone="muted">
+      <VStack gap="xs">
+        <Text variant="secondary">Chi tiết ảnh in ({printLines.length})</Text>
+        {printLines.map((line) => (
+          <VStack key={line.id} gap="none">
+            <HStack justify="between" align="center" gap="sm">
+              <VStack gap="none" className="flex-1">
+                <Text variant="caption">
+                  Khổ {line.printSizeCode} · {line.printSizeName}
+                </Text>
+                <Text variant="caption" tone="muted">
+                  Số lượng: {line.quantity} ảnh · Đơn giá {formatVnd(line.unitPriceVnd)}
+                </Text>
+              </VStack>
+              <Badge label={formatVnd(line.amountVnd)} tone="brand" />
+            </HStack>
+            {line.note ? (
+              <Text variant="caption" tone="muted">
+                Ghi chú: {line.note}
+              </Text>
+            ) : null}
+          </VStack>
+        ))}
       </VStack>
     </Card>
   );
@@ -239,6 +287,7 @@ function OrderDetailContent({
       ) : null}
       <OrderTimelineSection timeline={timeline} />
       <OrderRollsSection rolls={detail.rolls} />
+      <OrderPrintLinesSection printLines={detail.printLines} />
       <OrderHandoversSection
         orderId={orderId}
         handovers={detail.handovers}
@@ -516,7 +565,7 @@ export function OrderCardSection({
           <VStack gap="none" className="flex-1">
             <Text variant="heading">{order.orderCode}</Text>
             <Text variant="caption" tone="muted">
-              {order.labName ?? 'Phòng Lab đối tác'} · {order.rollCount} cuộn phim
+              {order.labName ?? 'Phòng Lab đối tác'} · {formatOrderItemsSummary(order)}
             </Text>
           </VStack>
           <Badge

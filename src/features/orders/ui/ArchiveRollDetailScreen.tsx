@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { openURL } from 'expo-linking';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import {
   type FilmArchiveRollResponse,
   filmLinkApi,
@@ -210,6 +210,18 @@ export function ArchiveRollDetailScreen() {
                     <MediaImage
                       uri={frame.url}
                       accessibilityLabel={`Khung ảnh ${frame.frameNumber}`}
+                    />
+                    <Button
+                      testID={`orders.archive-detail.preview-ai.${frame.id}`}
+                      label="Xem thử dương bản AI"
+                      size="sm"
+                      variant="secondary"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(modals)/negative-preview',
+                          params: { scanFileId: String(frame.id) },
+                        } as Href)
+                      }
                     />
                   </VStack>
                 </Card>

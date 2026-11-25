@@ -17,7 +17,7 @@ export function AiTabButton({ onPress, testID = 'tabs.ai-advisor' }: AiTabButton
         testID={testID}
         accessibilityRole="button"
         accessibilityLabel="Mở Trợ lý AI FilmLink"
-        onPress={onPress ?? (() => router.push('/(modals)/ai-advisor'))}
+        onPress={onPress ?? (() => router.push('/(tabs)/ai'))}
         hitSlop={8}
         className="-mt-6 h-16 w-16 items-center justify-center rounded-full border-4 active:scale-95 active:opacity-90"
         style={{

@@ -12,6 +12,10 @@ import {
   type ChatbotMessageResponse,
   type ChatbotMessagesParams,
   ChatbotMessagesParamsSchema,
+  type CreateNegativePreviewSessionData,
+  CreateNegativePreviewSessionDataSchema,
+  type CreatePreviewPrintOrderRequest,
+  CreatePreviewPrintOrderRequestSchema,
   type CreateServiceOrderRequest,
   CreateServiceOrderRequestSchema,
   type DeletePushTokenRequest,
@@ -28,10 +32,22 @@ import {
   FilmStockResponseSchema,
   type ForgotPasswordRequest,
   ForgotPasswordRequestSchema,
+  type GenerateNegativePreviewRequest,
+  GenerateNegativePreviewRequestSchema,
+  type LabPrintPriceTierResponse,
+  LabPrintPriceTierResponseSchema,
   type LoginRequest,
   LoginRequestSchema,
   type LogoutRequest,
   LogoutRequestSchema,
+  type NegativePreviewDownloadResponse,
+  NegativePreviewDownloadResponseSchema,
+  type NegativePreviewSessionListParams,
+  NegativePreviewSessionListParamsSchema,
+  type NegativePreviewSessionResponse,
+  NegativePreviewSessionResponseSchema,
+  NegativePreviewSessionSummaryPageSchema,
+  type NegativePreviewSessionSummaryResponse,
   type NotificationItemResponse,
   NotificationItemResponseSchema,
   type NotificationListParams,
@@ -39,12 +55,18 @@ import {
   NotificationPageSchema,
   type PageResponse,
   PositiveIdSchema,
+  type PreviewPrintOrderQuoteResponse,
+  PreviewPrintOrderQuoteResponseSchema,
+  type PrintSizeResponse,
+  PrintSizeResponseSchema,
   type PublicFilmLabResponse,
   PublicFilmLabResponseSchema,
   type PublicFilmLabSearchParams,
   PublicFilmLabSearchParamsSchema,
   PublicFilmLabSummaryPageSchema,
   type PublicFilmLabSummaryResponse,
+  type QuotePreviewPrintOrderRequest,
+  QuotePreviewPrintOrderRequestSchema,
   type RefreshTokenRequest,
   RefreshTokenRequestSchema,
   type RegisterPushTokenRequest,
@@ -75,6 +97,10 @@ import {
   ServiceTypeResponseSchema,
   type SubmitServiceOrderRequest,
   SubmitServiceOrderRequestSchema,
+  type UnlockNegativePreviewDownloadRequest,
+  UnlockNegativePreviewDownloadRequestSchema,
+  type UnlockNegativePreviewDownloadResponse,
+  UnlockNegativePreviewDownloadResponseSchema,
   type UnreadNotificationCountResponse,
   UnreadNotificationCountResponseSchema,
   type UserAccountResponse,
@@ -88,13 +114,15 @@ import {
   type VnpaySandboxUrlResponse,
   VnpaySandboxUrlResponseSchema,
 } from './contracts';
-import { type HttpClient, NoContentSchema } from './http';
+import { type HttpClient, type MultipartFile, NoContentSchema } from './http';
 import { type TokenResponse, TokenResponseSchema } from './session';
 
 const FilmFormatListSchema = z.array(FilmFormatResponseSchema);
 const FilmProcessListSchema = z.array(FilmProcessResponseSchema);
 const ServiceTypeListSchema = z.array(ServiceTypeResponseSchema);
 const FilmStockListSchema = z.array(FilmStockResponseSchema);
+const PrintSizeListSchema = z.array(PrintSizeResponseSchema);
+const LabPrintPriceTierListSchema = z.array(LabPrintPriceTierResponseSchema);
 
 export type FilmLinkApi = {
   readonly register: (payload: RegisterRequest) => Promise<UserAccountResponse>;
@@ -160,6 +188,37 @@ export type FilmLinkApi = {
   readonly markAllNotificationsRead: () => Promise<undefined>;
   readonly registerPushToken: (payload: RegisterPushTokenRequest) => Promise<undefined>;
   readonly deletePushToken: (payload: DeletePushTokenRequest) => Promise<undefined>;
+  readonly createNegativePreviewSession: (
+    data: CreateNegativePreviewSessionData,
+    file?: MultipartFile,
+  ) => Promise<NegativePreviewSessionResponse>;
+  readonly generateNegativePreview: (
+    sessionId: number,
+    payload: GenerateNegativePreviewRequest,
+  ) => Promise<NegativePreviewSessionResponse>;
+  readonly fetchNegativePreviewSessions: (
+    params?: NegativePreviewSessionListParams,
+  ) => Promise<PageResponse<NegativePreviewSessionSummaryResponse>>;
+  readonly fetchNegativePreviewSession: (
+    sessionId: number,
+  ) => Promise<NegativePreviewSessionResponse>;
+  readonly unlockNegativePreviewDownload: (
+    sessionId: number,
+    payload?: UnlockNegativePreviewDownloadRequest,
+  ) => Promise<UnlockNegativePreviewDownloadResponse>;
+  readonly fetchNegativePreviewDownload: (
+    sessionId: number,
+  ) => Promise<NegativePreviewDownloadResponse>;
+  readonly fetchPrintSizes: () => Promise<readonly PrintSizeResponse[]>;
+  readonly fetchLabPrintPrices: (labId: number) => Promise<readonly LabPrintPriceTierResponse[]>;
+  readonly quoteNegativePreviewPrintOrder: (
+    sessionId: number,
+    payload: QuotePreviewPrintOrderRequest,
+  ) => Promise<PreviewPrintOrderQuoteResponse>;
+  readonly createNegativePreviewPrintOrder: (
+    sessionId: number,
+    payload: CreatePreviewPrintOrderRequest,
+  ) => Promise<ServiceOrderResponse>;
 };
 
 export function createFilmLinkApi(client: HttpClient): FilmLinkApi {
@@ -333,6 +392,74 @@ export function createFilmLinkApi(client: HttpClient): FilmLinkApi {
     deletePushToken: (payload) => {
       const { fcmToken } = DeletePushTokenRequestSchema.parse(payload);
       return client.del('/notifications/push-tokens', NoContentSchema, { query: { fcmToken } });
+    },
+    createNegativePreviewSession: (data, file) =>
+      client.multipartPost(
+        '/ai/negative-previews/sessions',
+        {
+          data: CreateNegativePreviewSessionDataSchema.parse(data),
+          files: file ? [{ ...file, field: 'file' }] : [],
+        },
+        NegativePreviewSessionResponseSchema,
+      ),
+    generateNegativePreview: (sessionId, payload) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.post(
+        `/ai/negative-previews/sessions/${id}/generate`,
+        GenerateNegativePreviewRequestSchema.parse(payload),
+        NegativePreviewSessionResponseSchema,
+      );
+    },
+    fetchNegativePreviewSessions: (params) => {
+      const query = NegativePreviewSessionListParamsSchema.parse(params ?? {});
+      return client.get('/ai/negative-previews/sessions', NegativePreviewSessionSummaryPageSchema, {
+        query,
+      });
+    },
+    fetchNegativePreviewSession: (sessionId) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.get(
+        `/ai/negative-previews/sessions/${id}`,
+        NegativePreviewSessionResponseSchema,
+      );
+    },
+    unlockNegativePreviewDownload: (sessionId, payload = {}) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.post(
+        `/ai/negative-previews/sessions/${id}/unlock-download`,
+        UnlockNegativePreviewDownloadRequestSchema.parse(payload),
+        UnlockNegativePreviewDownloadResponseSchema,
+      );
+    },
+    fetchNegativePreviewDownload: (sessionId) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.get(
+        `/ai/negative-previews/sessions/${id}/download`,
+        NegativePreviewDownloadResponseSchema,
+      );
+    },
+    fetchPrintSizes: () => client.get('/public/print-sizes', PrintSizeListSchema, { auth: false }),
+    fetchLabPrintPrices: (labId) => {
+      const id = PositiveIdSchema.parse(labId);
+      return client.get(`/public/film-labs/${id}/print-prices`, LabPrintPriceTierListSchema, {
+        auth: false,
+      });
+    },
+    quoteNegativePreviewPrintOrder: (sessionId, payload) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.post(
+        `/ai/negative-previews/sessions/${id}/print-orders/quote`,
+        QuotePreviewPrintOrderRequestSchema.parse(payload),
+        PreviewPrintOrderQuoteResponseSchema,
+      );
+    },
+    createNegativePreviewPrintOrder: (sessionId, payload) => {
+      const id = PositiveIdSchema.parse(sessionId);
+      return client.post(
+        `/ai/negative-previews/sessions/${id}/print-orders`,
+        CreatePreviewPrintOrderRequestSchema.parse(payload),
+        ServiceOrderResponseSchema,
+      );
     },
   };
 }

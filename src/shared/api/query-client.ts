@@ -7,6 +7,7 @@ export const PRIVATE_QUERY_ROOTS = [
   filmLinkQueryKeys.orders.all,
   filmLinkQueryKeys.archive.all,
   filmLinkQueryKeys.chatbot.all,
+  filmLinkQueryKeys.negativePreview.all,
 ] as const;
 
 export function purgePrivateQueryCache(queryClient: QueryClient | undefined): void {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useState } from 'react';
 import {
   type AskChatbotQuestionRequest,
@@ -75,7 +75,74 @@ function MessageBubbleCard({ message }: { readonly message: ChatbotDisplayMessag
   );
 }
 
-export function AiAdvisorScreen() {
+export type AiAdvisorMode = 'tab' | 'modal';
+
+export type AiAdvisorScreenProps = {
+  readonly mode?: AiAdvisorMode;
+};
+
+function AiAdvisorHeader({ mode }: { readonly mode: AiAdvisorMode }) {
+  return (
+    <HStack justify="between" align="center" className="pt-2">
+      <VStack gap="none" className="flex-1">
+        <Text variant="title">Trợ lý AI FilmLink</Text>
+        <Text variant="caption" tone="muted">
+          Hỏi đáp Cẩm nang Chuyên gia (RAG) theo phiên
+        </Text>
+      </VStack>
+      {mode === 'modal' ? (
+        <Button
+          testID="ai.back"
+          label="Đóng"
+          variant="ghost"
+          size="sm"
+          onPress={() => router.back()}
+        />
+      ) : null}
+    </HStack>
+  );
+}
+
+function NegativePreviewStudioCard() {
+  return (
+    <Card tone="brand">
+      <VStack gap="sm">
+        <Badge label="Âm bản → Dương bản & In Lab" tone="brand" />
+        <Text variant="heading">AI Negative-to-Positive Studio</Text>
+        <Text variant="secondary" tone="secondary">
+          Chụp ảnh âm bản hoặc chọn từ thư viện và Lưu trữ số để xem thử dương bản theo mô tả ngôn
+          ngữ tự nhiên (không thanh chỉnh thủ công), mở khóa ảnh gốc và đặt in Lab.
+        </Text>
+        <Button
+          testID="ai.open-negative-preview"
+          label="Mở Xem thử Dương bản AI"
+          variant="primary"
+          onPress={() => router.push('/(modals)/negative-preview' as Href)}
+        />
+      </VStack>
+    </Card>
+  );
+}
+
+function AiAuthPromptSection() {
+  return (
+    <VStack gap="sm">
+      <Alert
+        testID="ai.auth-required"
+        tone="info"
+        message="Đăng nhập tài khoản FilmLink để gửi câu hỏi và lưu lịch sử phiên với Trợ lý AI."
+      />
+      <Button
+        testID="ai.login"
+        label="Đăng nhập để hỏi AI"
+        variant="primary"
+        onPress={() => router.push('/(auth)/login')}
+      />
+    </VStack>
+  );
+}
+
+export function AiAdvisorScreen({ mode = 'tab' }: AiAdvisorScreenProps) {
   const queryClient = useQueryClient();
   const user = useStore(authStore, (state) => state.user);
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
@@ -169,40 +236,20 @@ export function AiAdvisorScreen() {
     }
   };
 
+  const handleOpenServices = () => {
+    if (mode === 'modal') {
+      router.back();
+    }
+    router.push('/(tabs)/services');
+  };
+
   return (
     <Screen testID="ai.screen" scroll edges="top">
       <VStack gap="md">
-        <HStack justify="between" align="center" className="pt-2">
-          <VStack gap="none" className="flex-1">
-            <Text variant="title">Trợ lý AI FilmLink</Text>
-            <Text variant="caption" tone="muted">
-              Hỏi đáp Cẩm nang Chuyên gia (RAG) theo phiên
-            </Text>
-          </VStack>
-          <Button
-            testID="ai.back"
-            label="Đóng"
-            variant="ghost"
-            size="sm"
-            onPress={() => router.back()}
-          />
-        </HStack>
+        <AiAdvisorHeader mode={mode} />
+        <NegativePreviewStudioCard />
 
-        {!isAuthenticated ? (
-          <VStack gap="sm">
-            <Alert
-              testID="ai.auth-required"
-              tone="info"
-              message="Đăng nhập tài khoản FilmLink để gửi câu hỏi và lưu lịch sử phiên với Trợ lý AI."
-            />
-            <Button
-              testID="ai.login"
-              label="Đăng nhập để hỏi AI"
-              variant="primary"
-              onPress={() => router.push('/(auth)/login')}
-            />
-          </VStack>
-        ) : null}
+        {!isAuthenticated ? <AiAuthPromptSection /> : null}
 
         <DraftRecoveryBanner
           testID="ai.chat.draft-recovery"
@@ -284,10 +331,7 @@ export function AiAdvisorScreen() {
           testID="ai.chat.open-services"
           label="Mở Danh bạ Phòng Lab"
           variant="secondary"
-          onPress={() => {
-            router.back();
-            router.push('/(tabs)/services');
-          }}
+          onPress={handleOpenServices}
         />
       </VStack>
     </Screen>

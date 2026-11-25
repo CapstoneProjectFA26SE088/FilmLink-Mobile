@@ -4,5 +4,6 @@ export * from './contracts/catalog';
 export * from './contracts/chatbot';
 export * from './contracts/common';
 export * from './contracts/labs';
+export * from './contracts/negative-preview';
 export * from './contracts/notifications';
 export * from './contracts/orders';

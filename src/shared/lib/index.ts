@@ -27,6 +27,23 @@ export {
 } from './draft-storage';
 export { formatDateTimeVn, formatDateVn, formatVnd, VIETNAM_TIMEZONE } from './formatters';
 export {
+  ALLOWED_NEGATIVE_MIME_TYPES,
+  type AllowedNegativeMimeType,
+  captureNegativeFromCamera,
+  DRAFT_MEDIA_SUBDIR,
+  type MediaPickOutcome,
+  type MediaSaveOutcome,
+  NEGATIVE_MAX_FILE_BYTES,
+  type NegativeValidationResult,
+  normalizeNegativeMimeType,
+  type PickedNegativeAsset,
+  persistDraftMediaFile,
+  pickNegativeFromLibrary,
+  removeDraftMediaFile,
+  saveRemotePositiveToLibrary,
+  validateNegativeAsset,
+} from './media-files';
+export {
   ApiError,
   type ApiProblemDetail,
   type ArchiveIncompleteRollInfo,

@@ -1,1 +1,5 @@
-export { AiAdvisorScreen as default } from '@/features/ai-advisor';
+import { AiAdvisorScreen } from '@/features/ai-advisor';
+
+export default function AiAdvisorModalScreen() {
+  return <AiAdvisorScreen mode="modal" />;
+}

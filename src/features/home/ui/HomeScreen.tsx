@@ -13,6 +13,7 @@ import {
   checkRoleCapabilities,
   Role,
   SERVICE_ORDER_STATUS_LABELS,
+  ServiceOrderType,
 } from '@/shared/domain';
 import { formatVnd, useStore } from '@/shared/lib';
 import { Alert, Badge, Button, Card, HStack, Icon, Screen, Text, VStack } from '@/shared/ui';
@@ -123,6 +124,15 @@ function HomeOrderMetricsRow({
   );
 }
 
+function formatActiveOrderSummary(order: ServiceOrderSummaryResponse): string {
+  if (order.orderType === ServiceOrderType.AI_PREVIEW_PRINT || order.rollCount === 0) {
+    return order.printLineCount > 0
+      ? `Đơn in ảnh từ Dương bản AI · ${order.printLineCount} hạng mục in`
+      : 'Đơn in ảnh từ Dương bản AI';
+  }
+  return `${order.rollCount} cuộn phim`;
+}
+
 function HomeActiveOrderCard({ order }: { readonly order: ServiceOrderSummaryResponse }) {
   const displayAmount = order.finalTotalVnd ?? order.estimatedTotalVnd;
 
@@ -138,10 +148,10 @@ function HomeActiveOrderCard({ order }: { readonly order: ServiceOrderSummaryRes
           </HStack>
           <Badge label={SERVICE_ORDER_STATUS_LABELS[order.status]} tone="info" />
         </HStack>
-        <Text variant="heading">{order.labName}</Text>
+        <Text variant="heading">{order.labName ?? 'Phòng Lab đối tác'}</Text>
         <HStack justify="between" align="center">
           <Text variant="caption" tone="secondary">
-            {order.rollCount} cuộn phim
+            {formatActiveOrderSummary(order)}
           </Text>
           <Text variant="secondary" tone="brand">
             {formatVnd(displayAmount)}
@@ -256,7 +266,7 @@ export function HomeScreen() {
             size="sm"
             className="flex-1"
             icon={<Icon name="sparkles" size="xs" tone="brand" />}
-            onPress={() => router.push('/(modals)/ai-advisor')}
+            onPress={() => router.push('/(tabs)/ai')}
           />
           <Button
             testID="home.open-expert"

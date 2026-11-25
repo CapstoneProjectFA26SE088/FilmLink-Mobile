@@ -24,7 +24,27 @@
       "output": "single",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép FilmLink truy cập thư viện ảnh để chọn ảnh âm bản phim.",
+          "cameraPermission": "Cho phép FilmLink sử dụng máy ảnh để chụp ảnh âm bản phim.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Cho phép FilmLink lưu ảnh dương bản độ phân giải cao vào thư viện ảnh.",
+          "savePhotosPermission": "Cho phép FilmLink lưu ảnh dương bản đã mở khóa vào thư viện ảnh.",
+          "granularPermissions": ["photo"]
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }

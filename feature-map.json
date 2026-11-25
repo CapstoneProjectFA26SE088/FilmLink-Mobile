@@ -245,11 +245,12 @@
     {
       "id": "ai-advisor",
       "title": "AI Film Advisor",
-      "route": "/(modals)/ai-advisor",
-      "routeFile": "src/app/(modals)/ai-advisor.tsx",
+      "route": "/(tabs)/ai",
+      "routeFile": "src/app/(tabs)/ai.tsx",
       "entry": "src/features/ai-advisor/ui/AiAdvisorScreen.tsx",
       "testIDs": [
         "ai.screen",
+        "ai.open-negative-preview",
         "ai.auth-required",
         "ai.login",
         "ai.chat.draft-recovery",
@@ -263,7 +264,8 @@
         "ai.back"
       ],
       "invariants": [
-        "Connects to live RAG Chatbot (/chatbot/questions & /chatbot/sessions/{id}/messages) with session recovery, citations, and fallback notice"
+        "Connects to live RAG Chatbot (/chatbot/questions & /chatbot/sessions/{id}/messages) with session recovery, citations, and fallback notice",
+        "Hosts AI Negative-to-Positive Studio launcher (/(modals)/negative-preview) and supports tab (default) vs modal presentation modes"
       ]
     },
     {

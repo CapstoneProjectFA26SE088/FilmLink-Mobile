@@ -7,9 +7,16 @@ export type MediaImageProps = {
   readonly accessibilityLabel: string;
   readonly testID?: string;
   readonly className?: string;
+  readonly resizeMode?: 'cover' | 'contain';
 };
 
-export function MediaImage({ uri, accessibilityLabel, testID, className }: MediaImageProps) {
+export function MediaImage({
+  uri,
+  accessibilityLabel,
+  testID,
+  className,
+  resizeMode = 'cover',
+}: MediaImageProps) {
   const { palette } = useTheme();
 
   return (
@@ -17,7 +24,7 @@ export function MediaImage({ uri, accessibilityLabel, testID, className }: Media
       testID={testID}
       source={{ uri }}
       accessibilityLabel={accessibilityLabel}
-      resizeMode="cover"
+      resizeMode={resizeMode}
       className={cn('h-44 w-full rounded', className)}
       style={{ backgroundColor: palette.surfaceMuted }}
     />

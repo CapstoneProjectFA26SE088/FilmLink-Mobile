@@ -15,6 +15,7 @@ import {
   ProcessingStage,
   ScheduleChangeChoice,
   ServiceOrderStatus,
+  ServiceOrderType,
   ServiceTier,
 } from '@/shared/domain';
 import {
@@ -163,13 +164,28 @@ export const FilmRollResponseSchema = z.object({
 });
 export type FilmRollResponse = z.infer<typeof FilmRollResponseSchema>;
 
+export const OrderPrintLineResponseSchema = z.object({
+  id: PositiveIdSchema,
+  printSizeId: PositiveIdSchema,
+  printSizeCode: z.string().min(1),
+  printSizeName: z.string().min(1),
+  quantity: z.number().int().min(1).max(500),
+  unitPriceVnd: z.number().int().nonnegative(),
+  amountVnd: z.number().int().nonnegative(),
+  aiNegativePreviewSessionId: PositiveIdSchema.nullable().optional().default(null),
+  note: z.string().nullable().optional().default(null),
+});
+export type OrderPrintLineResponse = z.infer<typeof OrderPrintLineResponseSchema>;
+
 export const ServiceOrderSummaryResponseSchema = z.object({
   id: PositiveIdSchema,
   orderCode: z.string().min(1),
   status: z.enum(ServiceOrderStatus),
+  orderType: z.enum(ServiceOrderType).optional().default(ServiceOrderType.DEVELOP_AND_SCAN),
   filmLabId: PositiveIdSchema,
   labName: z.string().min(1).nullable(),
-  rollCount: z.number().int().positive(),
+  rollCount: z.number().int().nonnegative(),
+  printLineCount: z.number().int().nonnegative().optional().default(0),
   estimatedTotalVnd: z.number().int().nonnegative(),
   finalTotalVnd: z.number().int().nonnegative().nullable(),
   expectedReturnAt: IsoTimestampSchema.nullable(),
@@ -186,6 +202,7 @@ export const ServiceOrderResponseSchema = z.object({
   id: PositiveIdSchema,
   orderCode: z.string().min(1),
   status: z.enum(ServiceOrderStatus),
+  orderType: z.enum(ServiceOrderType).optional().default(ServiceOrderType.DEVELOP_AND_SCAN),
   filmLabId: PositiveIdSchema,
   serviceTier: z.enum(ServiceTier),
   filmHandoverMethod: z.enum(HandoverMethod),
@@ -201,6 +218,7 @@ export const ServiceOrderResponseSchema = z.object({
   expectedReturnAt: IsoTimestampSchema.nullable(),
   labResponseDueAt: IsoTimestampSchema.nullable(),
   rolls: z.array(FilmRollResponseSchema),
+  printLines: z.array(OrderPrintLineResponseSchema).optional().default([]),
   payment: z.unknown().nullable(),
   createdAt: IsoTimestampSchema,
 });
@@ -243,6 +261,7 @@ export const ServiceOrderDetailResponseSchema = z.object({
   id: PositiveIdSchema,
   orderCode: z.string().min(1),
   status: z.enum(ServiceOrderStatus),
+  orderType: z.enum(ServiceOrderType).optional().default(ServiceOrderType.DEVELOP_AND_SCAN),
   lab: OrderLabBriefSchema.nullable(),
   serviceTier: z.enum(ServiceTier),
   filmHandoverMethod: z.enum(HandoverMethod),
@@ -267,6 +286,7 @@ export const ServiceOrderDetailResponseSchema = z.object({
   cancellationFeeVnd: z.number().int().nonnegative().nullable().optional().default(null),
   keepNegativesAtLab: z.boolean().optional().default(false),
   rolls: z.array(FilmRollResponseSchema),
+  printLines: z.array(OrderPrintLineResponseSchema).optional().default([]),
   stages: z.array(OrderStageRecordSchema),
   handovers: z.array(OrderHandoverResponseSchema),
   payment: z.unknown().nullable(),
