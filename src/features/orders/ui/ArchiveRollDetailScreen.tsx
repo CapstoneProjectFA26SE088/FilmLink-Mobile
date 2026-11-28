@@ -218,7 +218,7 @@ export function ArchiveRollDetailScreen() {
                       variant="secondary"
                       onPress={() =>
                         router.push({
-                          pathname: '/(modals)/negative-preview',
+                          pathname: '/(modals)/negative-preview' as string,
                           params: { scanFileId: String(frame.id) },
                         } as Href)
                       }

@@ -227,10 +227,12 @@ function OrderHandoversSection({
         </HStack>
         {handovers.map((handover) => {
           const sortedPhotos = [...handover.photos].sort((a, b) => a.displayOrder - b.displayOrder);
+          const handoverScopeLabel =
+            handover.rollCount === 0 ? 'Bàn giao ảnh in' : `${handover.rollCount} cuộn`;
           return (
             <VStack key={handover.id} gap="xs">
               <Text variant="caption">
-                {HANDOVER_POINT_LABELS[handover.handoverPoint]} · {handover.rollCount} cuộn ·{' '}
+                {HANDOVER_POINT_LABELS[handover.handoverPoint]} · {handoverScopeLabel} ·{' '}
                 {formatDateTimeVn(handover.occurredAt)}
               </Text>
               {handover.note ? (

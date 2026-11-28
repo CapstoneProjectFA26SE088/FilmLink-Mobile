@@ -250,7 +250,7 @@ export type OrderHandoverPhoto = z.infer<typeof OrderHandoverPhotoSchema>;
 export const OrderHandoverResponseSchema = z.object({
   id: PositiveIdSchema,
   handoverPoint: z.enum(HandoverPoint),
-  rollCount: z.number().int().positive(),
+  rollCount: z.number().int().nonnegative(),
   note: z.string().nullable(),
   occurredAt: IsoTimestampSchema,
   photos: z.array(OrderHandoverPhotoSchema),
